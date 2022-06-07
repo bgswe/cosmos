@@ -1,4 +1,4 @@
-from tortoise import fields
+from tortoise import fields, Model
 
 
 class TimestampMixin:
@@ -7,4 +7,10 @@ class TimestampMixin:
 
 
 class BaseMixin:
+    # TODO: Validate this to be UUIDv4
     id = fields.CharField(max_length=36, pk=True, generated=False)  # UUIDv4
+
+
+class AbstractBaseModel(Model, BaseMixin, TimestampMixin):
+    class Meta:
+        abstract = True

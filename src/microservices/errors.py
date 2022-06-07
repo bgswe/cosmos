@@ -1,0 +1,2 @@
+class AggregateNotFound(Exception):
+    pass

@@ -43,6 +43,10 @@ class AsyncRepository(ABC):
         await self._add(agg)
         self.seen.add(agg)
 
+    async def update(self, agg: T):
+        await self._update(agg)
+        self.seen.add(agg)
+
     @abstractmethod
     async def _get(self, id: str) -> T:
         raise NotImplementedError
@@ -51,5 +55,8 @@ class AsyncRepository(ABC):
     async def _add(self, aggregate: T):
         raise NotImplementedError
 
+    @abstractmethod
+    async def _add(self, aggregate: T):
+        raise NotImplementedError
 
 Repository = Union[SyncRepository, AsyncRepository]
