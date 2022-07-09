@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Set, TypeVar, Union
+from typing import List, Set, TypeVar, Union
 
 from .domain import Aggregate
 
@@ -39,6 +39,12 @@ class AsyncRepository(ABC):
             self.seen.add(agg)
         return agg
 
+    async def get_list(self, **kwargs) -> List[T]:
+        agg_list = await self._get_list(**kwargs)
+        if agg_list:
+            self.seen.update(agg_list)
+        return agg_list
+
     async def add(self, agg: T):
         await self._add(agg)
         self.seen.add(agg)
@@ -52,11 +58,16 @@ class AsyncRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def _add(self, aggregate: T):
+    async def _get_list(self, **kwargs) -> List[T]:
         raise NotImplementedError
 
     @abstractmethod
     async def _add(self, aggregate: T):
         raise NotImplementedError
+
+    @abstractmethod
+    async def _update(self, aggregate: T):
+        raise NotImplementedError
+
 
 Repository = Union[SyncRepository, AsyncRepository]

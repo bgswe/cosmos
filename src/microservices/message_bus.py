@@ -1,23 +1,40 @@
 import asyncio
-from typing import Callable, Dict, List, Type, Union
+from abc import abstractmethod
+from typing import Callable, Dict, List, Protocol, Type, Union
 
 from microservices.domain import Command, Event
+from microservices.repository import Repository
 from microservices.unit_of_work import UnitOfWork
 
-
 Message = Union[Command, Event]
+
+
+class Publisher(Protocol):
+    @abstractmethod
+    def publish(self, event: Event) -> None:
+        raise NotImplementedError
 
 
 class _MessageBus:
     def __init__(
         self,
-        uow: UnitOfWork,
-        event_handlers: Dict[Type[Event], List[Callable]],
-        command_handlers: Dict[Type[Command], Callable],
+        uow_cls: Type[UnitOfWork],
+        repository: Repository,
+        event_handlers: Dict[Type[Event], List[Callable]] = None,
+        command_handlers: Dict[Type[Command], Callable] = None,
+        publisher: Publisher = None,
     ):
-        self.uow = uow
+        if event_handlers is None:
+            event_handlers = {}
+
+        if command_handlers is None:
+            command_handlers = {}
+
+        self.uow_cls = uow_cls
+        self.repo = repository
         self.event_handlers = event_handlers
         self.command_handlers = command_handlers
+        self._publisher = publisher
 
     async def handle(self, message: Message):
         self.queue = [message]
@@ -33,11 +50,16 @@ class _MessageBus:
                 raise Exception(f"{message} was not an Event or Command")
 
     async def handle_event(self, event: Event):
-        for handler in self.event_handlers[type(event)]:
+        for handler in self.event_handlers[event.type]:
             try:
-                # logger.debug("handling event %s with handler %s", event, handler)
-                await handler(uow=self.uow, event=event)
-                self.queue.extend(self.uow.collect_events())
+                uow = self.uow_cls(repository=self.repo)
+                await handler(uow=uow, event=event)
+
+                # TODO: What if this fails?
+                if self._publisher:
+                    await self._publisher.publish(event=event)
+
+                self.queue.extend(uow.collect_events())
             except Exception:
                 # logger.exception("Exception handling event %s", event)
                 continue
@@ -46,8 +68,9 @@ class _MessageBus:
         # logger.debug("handling command %s", command)
         try:
             handler = self.command_handlers[type(command)]
-            await handler(uow=self.uow, command=command)
-            self.queue.extend(self.uow.collect_events())
+            uow = self.uow_cls(repository=self.repo)
+            await handler(uow=uow, command=command)
+            self.queue.extend(uow.collect_events())
         except Exception:
             # logger.exception("Exception handling command %s", command)
             raise
@@ -56,8 +79,8 @@ class _MessageBus:
 class MessageBus(_MessageBus):
     def handle(self, message: Message):
         """Provides way to invoke async handle w/o awaiting.
-        
-        TODO: Execute message validation if it is command. Raise 
+
+        TODO: Execute message validation if it is command. Raise
         exception synchronously if command is not valid.
         """
 

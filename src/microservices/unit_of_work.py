@@ -29,7 +29,7 @@ class SyncUnitOfWork(BaseUnitOfWork, Protocol):
         raise NotImplementedError
 
 
-class AsyncUnitOfWork(BaseUnitOfWork, Protocol):
+class AsyncUnitOfWork(Protocol):
     @abstractmethod
     def __aenter__(self):
         raise NotImplementedError
@@ -40,6 +40,10 @@ class AsyncUnitOfWork(BaseUnitOfWork, Protocol):
 
     @abstractmethod
     def query(self, query: str, params: List[Any]) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def collect_events(self) -> List[Event]:
         raise NotImplementedError
 
 

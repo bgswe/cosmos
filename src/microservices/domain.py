@@ -1,20 +1,38 @@
 from abc import ABC
+from enum import Enum
+from typing import Any, Dict, List, Type, Union
 
 from pydantic import BaseModel, constr
 
-from typing import Any, Dict, List, Type
 from .utils import uuid4
 
 
 class Event:
     """Base Event of our domain model."""
 
-    pass
+    def __init__(self):
+        self.id = uuid4()
+
+    stream: str
+
+
+class EventStreams(Enum):
+    """Central location for defining the publishable event types.
+
+    TODO: This likely needs to be replaced by an 'Event Registry'.
+    """
+
+    OrganizationCreated = "organization.created"
+
+    InspectionCreated = "inspection.created"
+    InspectionUpdated = "inspection.updated"
+    InspectionCancelled = "inspection.cancelled"
+    InspectionInvalidCancellation = "inspection.invalid_cancellation"
 
 
 def uuid_constr() -> Type[str]:
     """Returns configured constr from pydantic with UUIDv4 constraints."""
-    
+
     return constr(
         min_length=36,
         max_length=36,
@@ -23,9 +41,10 @@ def uuid_constr() -> Type[str]:
 
 class Command(BaseModel):
     """Base Command of our domain model.
-    
+
     Includes the client_id of the invoker of a given command.
     """
+
     client_id: uuid_constr()
 
 
@@ -38,10 +57,6 @@ class Entity(ABC):
         Sets id to new UUID if not specified by children __init__ functions, and
         captures the values of the Entities private/public attrs upon initialization.
         """
-
-        # Generate ID if not specified in __init__
-        if self._id is None:
-            self._id = uuid4()
 
         def func(e: Entity):
             # Capture a snapshot of the values of this entity during initialization
@@ -56,10 +71,6 @@ class Entity(ABC):
             return initialized_values
 
         self._initialized_values = func(self)
-
-    @property
-    def id(self):
-        return self._id
 
     @property
     def initialized_values(self) -> Dict[str, Any]:
@@ -85,7 +96,6 @@ class Entity(ABC):
         return changed_values
 
 
-
 class Aggregate(Entity, ABC):
     """Aggregate to serve as an entry point into domain."""
 
@@ -108,3 +118,19 @@ class Aggregate(Entity, ABC):
 
     def get_events(self) -> List[Event]:
         return self._events
+
+
+def create_entity(
+    cls: Type[Entity],
+    **init_kwargs,
+) -> Union[Entity, Aggregate]:
+    """Encapsulates housekeeping tasks of entity creation.
+
+    Takes a subclass of Entity and a dictionary of kwargs which
+    is used as arguments to the subclass' __init__.
+    """
+
+    if init_kwargs.get("id", None) is None:
+        init_kwargs = {**init_kwargs, "id": uuid4()}
+
+    return cls(**init_kwargs)
