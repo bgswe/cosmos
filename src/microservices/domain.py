@@ -1,19 +1,23 @@
 from abc import ABC
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Type, Union
+from typing import Any, ClassVar, Dict, List, Type, Union
 
 from pydantic import BaseModel, constr
 
 from .utils import uuid4
 
 
+@dataclass(kw_only=True)
 class Event:
     """Base Event of our domain model."""
 
-    def __init__(self):
-        self.id = uuid4()
+    id: str = None
+    stream: ClassVar[str] = None
 
-    stream: str
+    def __post_init__(self):
+        if self.id is None:
+            self.id = uuid4()
 
 
 class EventStreams(Enum):
@@ -134,3 +138,41 @@ def create_entity(
         init_kwargs = {**init_kwargs, "id": uuid4()}
 
     return cls(**init_kwargs)
+
+
+class Subscription(Aggregate):
+    """Aggregate for Event Stream Subscriptions."""
+
+    def __init__(
+        self,
+        id: str,
+        stream: EventStreams,
+        webhook_url: str,
+        health_check_url: str,
+    ):
+        self.id = id
+        self.stream = stream
+        self.webhook_url = webhook_url
+        self.health_check_url = health_check_url
+
+        super().__init__()
+
+    @classmethod
+    def create(
+        cls,
+        stream: EventStreams,
+        webhook_url: str,
+        health_check_url: str,
+        id: str = None,
+    ):
+        new_sub = create_entity(
+            cls=cls,
+            id=id,
+            stream=stream,
+            webhook_url=webhook_url,
+            health_check_url=health_check_url,
+        )
+
+        # TODO: ...
+
+        return new_sub

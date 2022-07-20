@@ -2,7 +2,7 @@ import asyncio
 from abc import abstractmethod
 from typing import Callable, Dict, List, Protocol, Type, Union
 
-from microservices.domain import Command, Event
+from microservices.domain import Command, Event, EventStreams
 from microservices.repository import Repository
 from microservices.unit_of_work import UnitOfWork
 
@@ -20,7 +20,7 @@ class _MessageBus:
         self,
         uow_cls: Type[UnitOfWork],
         repository: Repository,
-        event_handlers: Dict[Type[Event], List[Callable]] = None,
+        event_handlers: Dict[EventStreams, List[Callable]] = None,
         command_handlers: Dict[Type[Command], Callable] = None,
         publisher: Publisher = None,
     ):
@@ -50,14 +50,14 @@ class _MessageBus:
                 raise Exception(f"{message} was not an Event or Command")
 
     async def handle_event(self, event: Event):
-        for handler in self.event_handlers[event.type]:
+        # TODO: What if this fails?
+        if self._publisher:
+            await self._publisher.publish(event=event)
+
+        for handler in self.event_handlers[event.stream]:
             try:
                 uow = self.uow_cls(repository=self.repo)
                 await handler(uow=uow, event=event)
-
-                # TODO: What if this fails?
-                if self._publisher:
-                    await self._publisher.publish(event=event)
 
                 self.queue.extend(uow.collect_events())
             except Exception:

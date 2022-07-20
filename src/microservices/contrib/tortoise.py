@@ -91,11 +91,6 @@ class TortoiseUOW:
         repository: Repository = None,
         collector: Collector = None,
     ):
-        if transaction_context is None:
-            self._tc = in_transaction()
-        else:
-            self._tc = transaction_context
-
         if collector is None:
             self._collector = SimpleCollector()
         else:
@@ -104,6 +99,7 @@ class TortoiseUOW:
         self._repo = repository
 
     async def __aenter__(self):
+        self._tc = in_transaction()
         await self._tc.__aenter__()
         return self
 
