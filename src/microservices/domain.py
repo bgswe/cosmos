@@ -1,37 +1,13 @@
+from __future__ import annotations
+
 from abc import ABC
-from dataclasses import dataclass
-from enum import Enum
-from typing import Any, ClassVar, Dict, List, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 from pydantic import BaseModel, constr
 
+from microservices.events import Event, EventStream
+
 from .utils import uuid4
-
-
-@dataclass(kw_only=True)
-class Event:
-    """Base Event of our domain model."""
-
-    id: str = None
-    stream: ClassVar[str] = None
-
-    def __post_init__(self):
-        if self.id is None:
-            self.id = uuid4()
-
-
-class EventStreams(Enum):
-    """Central location for defining the publishable event types.
-
-    TODO: This likely needs to be replaced by an 'Event Registry'.
-    """
-
-    OrganizationCreated = "organization.created"
-
-    InspectionCreated = "inspection.created"
-    InspectionUpdated = "inspection.updated"
-    InspectionCancelled = "inspection.cancelled"
-    InspectionInvalidCancellation = "inspection.invalid_cancellation"
 
 
 def uuid_constr() -> Type[str]:
@@ -49,7 +25,7 @@ class Command(BaseModel):
     Includes the client_id of the invoker of a given command.
     """
 
-    client_id: uuid_constr()
+    client_id: uuid_constr()  # type: ignore
 
 
 class Entity(ABC):
@@ -133,46 +109,52 @@ def create_entity(
     Takes a subclass of Entity and a dictionary of kwargs which
     is used as arguments to the subclass' __init__.
     """
-
+    # Auto-assign UUID if not provided by entity creator
     if init_kwargs.get("id", None) is None:
         init_kwargs = {**init_kwargs, "id": uuid4()}
 
     return cls(**init_kwargs)
 
 
-class Subscription(Aggregate):
-    """Aggregate for Event Stream Subscriptions."""
+class Consumer(Aggregate):
+    """Aggregate for Event Stream Consumers."""
 
     def __init__(
         self,
         id: str,
-        stream: EventStreams,
-        webhook_url: str,
-        health_check_url: str,
+        stream: EventStream,
+        name: str,
+        acked_id: str,
+        retroactive: bool,
     ):
         self.id = id
         self.stream = stream
-        self.webhook_url = webhook_url
-        self.health_check_url = health_check_url
+        self.name = name
+        self.acked_id = acked_id
+        self.retroactive = retroactive
 
         super().__init__()
 
     @classmethod
     def create(
         cls,
-        stream: EventStreams,
-        webhook_url: str,
-        health_check_url: str,
+        stream: EventStream,
+        name: str,
         id: str = None,
-    ):
-        new_sub = create_entity(
+        retroactive: bool = True,
+    ) -> Consumer:
+        new_consumer = create_entity(
             cls=cls,
             id=id,
             stream=stream,
-            webhook_url=webhook_url,
-            health_check_url=health_check_url,
+            name=name,
+            acked_id="0",
+            retroactive=retroactive,
         )
+
+        # Tells mypy it's definitely a Consumer
+        assert isinstance(new_consumer, Consumer)
 
         # TODO: ...
 
-        return new_sub
+        return new_consumer

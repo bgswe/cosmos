@@ -1,13 +1,14 @@
 import logging
-from abc import abstractmethod
 from functools import reduce
-from typing import Any, Dict, List, Protocol, Tuple
+from typing import Any, Dict, Generic, List, Tuple, TypeVar
 
 from tortoise import Model, fields
 from tortoise.backends.base.client import TransactionContext
 from tortoise.transactions import in_transaction
 
+from microservices.domain import Aggregate
 from microservices.repository import AsyncRepository, Repository
+from microservices.unit_of_work import EventCollector, simple_collector
 
 
 class TimestampMixin:
@@ -32,7 +33,7 @@ class SimpleEventCollector:
                 yield aggregate.get_events().pop(0)
 
 
-def aggregate_related_object_fields(input: Dict[str, Any]) -> Dict[str, Any]:
+def aggregate_related_object_fields(input: Dict[str, Dict]) -> Dict[str, Any]:
     output = {}
     split_keys = []
 
@@ -43,8 +44,11 @@ def aggregate_related_object_fields(input: Dict[str, Any]) -> Dict[str, Any]:
         else:
             output[key] = input[key]
 
-    def reducer(dictionary: Dict[str, Any], split_key: Tuple[str]):
+    def reducer(
+        dictionary: Dict[str, Any], split_key: Tuple[str, str]
+    ) -> Dict[str, Any]:
         """Groups remaining portions of split key, by first portion of split key."""
+
         first, rest = split_key
 
         # Check to see if list for first split key has been created
@@ -56,7 +60,7 @@ def aggregate_related_object_fields(input: Dict[str, Any]) -> Dict[str, Any]:
 
         return dictionary
 
-    split_keys_organized = reduce(reducer, split_keys, {})
+    split_keys_organized: Dict[str, Any] = reduce(reducer, split_keys, {})
 
     for first, rest in split_keys_organized.items():
         output[first] = {}
@@ -71,31 +75,21 @@ def aggregate_related_object_fields(input: Dict[str, Any]) -> Dict[str, Any]:
     return output
 
 
-class Collector(Protocol):
-    @abstractmethod
-    def collect(self, repository: Repository):
-        raise NotImplementedError
+T = TypeVar("T", bound=Aggregate)
 
 
-class SimpleCollector:
-    def collect(self, repository: Repository):
-        for aggregate in repository.seen:
-            while aggregate.has_events:
-                yield aggregate.get_events().pop(0)
-
-
-class TortoiseUOW:
+class TortoiseUOW(Generic[T]):
     def __init__(
         self,
         # TODO: Evaluate this being unused??
         transaction_context: TransactionContext = None,
-        repository: Repository = None,
-        collector: Collector = None,
+        repository: AsyncRepository[T] = None,
+        collector: EventCollector = None,
     ):
-        if collector is None:
-            self._collector = SimpleCollector()
-        else:
+        if collector is not None:
             self._collector = collector
+        else:
+            self._collector = simple_collector
 
         self._repo = repository
 
@@ -109,9 +103,18 @@ class TortoiseUOW:
 
     @property
     def repository(self) -> AsyncRepository:
-        return self._repo
+        # TODO: Create a default repository to return
+        # ignore added until above is implemented.
 
-    async def query(self, query: str, params: List[Any] = None) -> List[Dict[str, Any]]:
+        return self._repo  # type: ignore
+
+    @repository.setter
+    def repository(self, value: AsyncRepository[T]):
+        self._repo = value
+
+    async def query(
+        self, query: str, params: List[Any] = None
+    ) -> Tuple[int, List[Dict[str, Any]]]:
         try:
             row_count, results = await self._tc.connection.execute_query(query, params)
         except Exception as e:
@@ -131,7 +134,7 @@ class TortoiseUOW:
 
     def collect_events(self):
         if self._collector is None:
-            # TODO: Customer Exception
+            # TODO: Custom Exception
             raise Exception
 
-        return self._collector.collect(repository=self._repo)
+        return self._collector(repository=self._repo)

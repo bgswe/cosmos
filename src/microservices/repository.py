@@ -1,17 +1,17 @@
-from abc import ABC, abstractmethod
-from typing import List, Set, TypeVar, Union
+from abc import abstractmethod
+from typing import Generic, List, Set, TypeVar, Union
 
 from .domain import Aggregate
 
 T = TypeVar("T", bound=Aggregate)
 
 
-class SyncRepository(ABC):
+class SyncRepository(Generic[T]):
     def __init__(self):
         self.seen: Set[T] = set()
 
     def get(self, id: str) -> T:
-        agg = self._get(id=id)
+        agg: T = self._get(id=id)
         if agg:
             self.seen.add(agg)
         return agg
@@ -29,7 +29,7 @@ class SyncRepository(ABC):
         raise NotImplementedError
 
 
-class AsyncRepository(ABC):
+class AsyncRepository(Generic[T]):
     def __init__(self):
         self.seen: Set[T] = set()
 
@@ -70,4 +70,4 @@ class AsyncRepository(ABC):
         raise NotImplementedError
 
 
-Repository = Union[SyncRepository, AsyncRepository]
+Repository = Union[SyncRepository[T], AsyncRepository[T]]
