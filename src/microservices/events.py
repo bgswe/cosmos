@@ -14,7 +14,7 @@ class Domain(Enum):
 
 
 class EventStream(Enum):
-    RegistrationNew = f"{Domain.Registration.value}.new"
+    RegistrationNewOrganization = f"{Domain.Registration.value}.new_organization"
 
     InspectionNew = f"{Domain.Inspection.value}.new"
     InspectionUpdated = f"{Domain.Inspection.value}.updated"
@@ -38,10 +38,10 @@ class Event(BaseModel):
 """Registration Events."""
 
 
-class RegistrationNew(Event):
+class RegistrationNewOrganization(Event):
     """..."""
 
-    stream: ClassVar[EventStream] = EventStream.RegistrationNew
+    stream: ClassVar[EventStream] = EventStream.RegistrationNewOrganization
 
     organization_id: str
     organization_name: str
@@ -111,11 +111,15 @@ class InspectionInvalidCancellation(Event):
     stream: ClassVar[EventStream] = EventStream.InspectionCancellationInvalid
 
     inspection_id: str
-    reason: str
+    cancellation_details: str
 
 
 EVENTS = [
-    RegistrationNew,
+    RegistrationNewOrganization,
+    InspectionNew,
+    InspectionUpdated,
+    InspectionCancelled,
+    InspectionInvalidCancellation,
 ]
 
 STREAM_TO_EVENT_MAPPING = {e.stream: e for e in EVENTS}
