@@ -2,7 +2,7 @@ from typing import List
 
 from tortoise import fields
 
-from microservices.contrib.tortoise import AbstractBaseModel
+from microservices.contrib.tortoise.models import AbstractBaseModel
 from microservices.domain import Consumer
 from microservices.events import EventStream
 from microservices.repository import AsyncRepository

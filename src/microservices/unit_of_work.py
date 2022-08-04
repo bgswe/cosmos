@@ -56,11 +56,11 @@ class SyncUnitOfWork(BaseUnitOfWork, Protocol):
 # EVAL: Has error where covariant, and non-covariant Protocol throws err
 class AsyncUnitOfWork(BaseUnitOfWork, Protocol[T]):  # type: ignore
     @abstractmethod
-    def __aenter__(self) -> AsyncUnitOfWork:
+    async def __aenter__(self) -> AsyncUnitOfWork:
         raise NotImplementedError
 
     @abstractmethod
-    def __aexit__(self, *args):
+    async def __aexit__(self, *args):
         raise NotImplementedError
 
     @abstractmethod

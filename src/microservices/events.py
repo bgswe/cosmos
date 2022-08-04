@@ -1,8 +1,11 @@
+from collections import namedtuple
 from datetime import datetime as dt
 from enum import Enum
 from typing import ClassVar, Optional
 
 from pydantic import BaseModel, Field
+
+ConsumerConfig = namedtuple("ConsumerConfig", "name target retroactive")
 
 
 class Domain(Enum):
@@ -23,6 +26,9 @@ class Event(BaseModel):
     """Base Event of our domain model."""
 
     stream: ClassVar[EventStream]
+
+    class Config:
+        use_enum_values = True
 
     @property
     def domain(self) -> str:

@@ -1,24 +1,61 @@
 import asyncio
+import json
 import logging
 import os
-from collections import namedtuple
 from typing import Any, Callable, Dict, List
 
 import redis
+from redis import Redis
 
 from microservices.domain import Consumer
-from microservices.events import STREAM_TO_EVENT_MAPPING, Domain, Event, EventStream
+from microservices.events import (
+    STREAM_TO_EVENT_MAPPING,
+    ConsumerConfig,
+    Domain,
+    Event,
+    EventStream,
+)
 from microservices.message_bus import MessageBus
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUOWFactory
 
-ConsumerConfig = namedtuple("ConsumerConfig", "name target retroactive")
+logging.basicConfig(level=logging.INFO)
 
 
 class RedisPublisher:
+    def __init__(self, client: Redis):
+        self._client = client
+
     async def publish(self, event: Event):
         """..."""
 
-        pass
+        values = event.dict()
+
+        try:
+            response = self._client.xadd(
+                name=event.stream.value,
+                fields={"values": json.dumps({values})},
+            )
+
+            logging.debug(f"redis xadd command response: {response}")
+
+        except Exception as e:
+            logging.debug(f"redis xadd failed with exception type: {type(e)}")
+            logging.debug(f"-- event: f{values}")
+            logging.debug(f"-- exception: f{e}")
+
+            # TODO: What todo when message publish fails?
+
+
+def get_redis_client() -> redis.Redis:
+    """..."""
+
+    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+
+    # Establish Redis client connection.
+    return redis.Redis(
+        host=REDIS_HOST, port=REDIS_PORT, retry_on_timeout=True, decode_responses=True
+    )
 
 
 async def read_stream(
@@ -44,7 +81,7 @@ async def read_stream(
         domain=domain,
         uow_factory=uow_factory,
         event_handlers={stream: [target]},
-        publisher=RedisPublisher(),
+        publisher=RedisPublisher(client=get_redis_client()),
     )
 
     while True:
@@ -64,22 +101,27 @@ async def read_stream(
 
                     for message_id, values in messages:
                         logging.info(
-                            f"handling event from {stream} with target function"
-                            f"{target_name}\n event values: {values}\n"
+                            f"handling event from {stream}"
+                            f"-- id: {message_id}"
+                            f"-- target_name: {target_name}"
+                            f"-- type: {type(values)}"
+                            f"-- event values: {values}\n"
                         )
 
                         # Hydrates the mapped domain event view values from the stream
-                        hydrated_event = STREAM_TO_EVENT_MAPPING[stream](**values)
+                        hydrated_event = STREAM_TO_EVENT_MAPPING[stream](
+                            **json.loads(values["values"])
+                        )
 
                         await bus.handle(message=hydrated_event)
-
-                        logging.info(f"event {message_id} handled by {consumer.name}")
 
                         # Update latest read message.
                         # What's the best way to capture this, long term?
                         consumer.acked_id = message_id
 
                         await uow.repository.update(consumer)
+
+                        logging.info(f"-- handled {stream} message w/ id {message_id}")
 
                 await asyncio.sleep(sleep)
 
@@ -98,13 +140,7 @@ async def redis_consumer(
     :param: handlers -> EventStreams of interest, and the associated handlers.
     :param: subscriptions -> An implementation of the subs repo.
     """
-    REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-    REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-
-    # Establish Redis client connection.
-    client = redis.Redis(
-        host=REDIS_HOST, port=REDIS_PORT, retry_on_timeout=True, decode_responses=True
-    )
+    client = get_redis_client()
 
     # Create consumer sets representing consumer config, and current consumer state
     async with uow_factory.get_uow() as uow:

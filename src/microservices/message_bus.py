@@ -3,8 +3,8 @@ from abc import abstractmethod
 from typing import Callable, Dict, List, Protocol, Type, Union
 
 from microservices.domain import Command
-from microservices.events import Event, EventStream
-from microservices.unit_of_work import UnitOfWorkFactory
+from microservices.events import Domain, Event, EventStream
+from microservices.unit_of_work import AsyncUOWFactory
 
 Message = Union[Command, Event]
 
@@ -18,8 +18,8 @@ class Publisher(Protocol):
 class _MessageBus:
     def __init__(
         self,
-        domain: str,
-        uow_factory: UnitOfWorkFactory,
+        domain: Domain,
+        uow_factory: AsyncUOWFactory,
         event_handlers: Dict[EventStream, List[Callable]] = None,
         command_handlers: Dict[Type[Command], Callable] = None,
         publisher: Publisher = None,
