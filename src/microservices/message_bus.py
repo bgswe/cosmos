@@ -30,6 +30,7 @@ class _MessageBus:
         if command_handlers is None:
             command_handlers = {}
 
+        self.domain = domain
         self.uow_factory = uow_factory
         self.event_handlers = event_handlers
         self.command_handlers = command_handlers
@@ -49,8 +50,11 @@ class _MessageBus:
                 raise Exception(f"{message} was not an Event or Command")
 
     async def handle_event(self, event: Event):
-        # TODO: What if this fails?
-        if self.publisher:
+        # Only publish events that originate inside the domain, otherwise
+        # we run the chance of republishing the a previously published event.
+        # Handlers should be idempotent, but it still pollutes message broker.
+        if event.stream.value.split(".")[0] == self.domain and self.publisher:
+            # TODO: What if this fails?
             await self.publisher.publish(event=event)
 
         for handler in self.event_handlers[event.stream]:
