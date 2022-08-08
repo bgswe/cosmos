@@ -2,6 +2,7 @@ import logging
 from functools import reduce
 from typing import Any, Dict, Generic, List, Tuple, TypeVar
 
+from tortoise import Tortoise
 from tortoise.backends.base.client import TransactionContext
 from tortoise.transactions import in_transaction
 
@@ -15,6 +16,21 @@ class SimpleEventCollector:
         for aggregate in repository.seen:
             while aggregate.has_events:
                 yield aggregate.get_events().pop(0)
+
+
+async def tortoise_connect(
+    generate: bool = False,
+    db_url: str = None,
+    models: List[str] = None,
+):
+
+    await Tortoise.init(
+        db_url=db_url,
+        modules={"models": models},
+    )
+
+    if generate:
+        await Tortoise.generate_schemas()
 
 
 def aggregate_related_object_fields(input: Dict[str, Dict]) -> Dict[str, Any]:
