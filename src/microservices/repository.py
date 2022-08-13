@@ -36,11 +36,6 @@ class AsyncRepository(Generic[T]):
 
         return agg
 
-    async def _get(self, id: str) -> T:
-        """Required for repository implementation to get an instance type 'T'."""
-
-        raise NotImplementedError
-
     async def get_list(self, **kwargs) -> List[T]:
         """Call subclass _get_list implementation and note the aggregates as seen.
 
@@ -57,11 +52,6 @@ class AsyncRepository(Generic[T]):
 
         return agg_list
 
-    async def _get_list(self, **kwargs) -> List[T]:
-        """Required for repository implementation to get a list of type 'T'."""
-
-        raise NotImplementedError
-
     async def add(self, aggregate: T):
         """Call subclass _add implementation and note the aggregate as seen.
 
@@ -70,11 +60,6 @@ class AsyncRepository(Generic[T]):
         await self._add(aggregate)
 
         self._seen.add(aggregate)
-
-    async def _add(self, aggregate: T):
-        """Required for repository implementation to add an instance of type 'T'."""
-
-        raise NotImplementedError
 
     async def update(self, aggregate: T):
         """Call subclass _update implementation and note the aggregate as seen.
@@ -85,6 +70,21 @@ class AsyncRepository(Generic[T]):
         await self._update(aggregate)
 
         self._seen.add(aggregate)
+
+    async def _get(self, id: str) -> T:
+        """Required for repository implementation to get an instance type 'T'."""
+
+        raise NotImplementedError
+
+    async def _get_list(self, **kwargs) -> List[T]:
+        """Required for repository implementation to get a list of type 'T'."""
+
+        raise NotImplementedError
+
+    async def _add(self, aggregate: T):
+        """Required for repository implementation to add an instance of type 'T'."""
+
+        raise NotImplementedError
 
     async def _update(self, aggregate: T):
         """Required for repository implementation to update an instances of type 'T'."""

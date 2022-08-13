@@ -1,3 +1,5 @@
+from distutils.command.install_egg_info import safe_name
+
 import pytest
 
 from microservices.domain import Aggregate
@@ -8,7 +10,7 @@ logger = get_logger()
 
 
 class MockAggregate(Aggregate):
-    """..."""
+    """Simple test aggregate implementation."""
 
     def __init__(self, id: str = None):
         self.id = id if id else str(uuid4())
@@ -16,19 +18,21 @@ class MockAggregate(Aggregate):
 
 @pytest.fixture
 def mock_aggregate() -> MockAggregate:
-    """..."""
+    """Simple fixture to provide an instance of MockAggregate."""
 
     return MockAggregate()
 
 
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
-    """..."""
+    """Test implementation of AsyncRepository with '_get' method."""
 
     async def _get(self, id: str) -> MockAggregate | None:
-        if id == "NOT_FOUND":
+        """Simulates returning an aggregate or None if 'Not Found'."""
+
+        if id == "NOT_FOUND":  # pass this str as id to simulate Not Found
             return None
 
-        return MockAggregate(id=id)
+        return MockAggregate(id=id)  # otherwise, simulate a found aggregate
 
 
 @pytest.fixture
@@ -36,6 +40,25 @@ def mock_async_repository_get() -> AsyncRepository:
     """Simple Fixture to provide an instance of the 'get' mock repository."""
 
     return MockAsyncRepositoryGet()
+
+
+class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
+    """Test implementation of AsyncRepository with '_get_list' method."""
+
+    async def _get_list(self, **kwargs) -> AsyncRepository:
+        """Simulates returning a list of aggregates."""
+
+        if kwargs.get("empty", None):
+            return []
+
+        return [MockAggregate() for _ in range(5)]
+
+
+@pytest.fixture
+def mock_async_repository_get_list() -> AsyncRepository:
+    """Simple fixture to provide an instance of the 'get_list' mock repostory."""
+
+    return MockAsyncRepositoryGetList()
 
 
 class MockAsyncRepositoryAdd(AsyncRepository[MockAggregate]):
@@ -52,6 +75,9 @@ def mock_async_repository_add() -> AsyncRepository:
     """Simple fixture to provide an instance of the 'add' mock repository."""
 
     return MockAsyncRepositoryAdd()
+
+
+safe_name
 
 
 class MockAsyncRepositoryAddThrowException(AsyncRepository[MockAggregate]):
@@ -106,12 +132,15 @@ def mock_async_repository_update_raise_exception() -> AsyncRepository:
     argnames=["mock_repository"],
     argvalues=[
         (MockAsyncRepositoryGet(),),
+        (MockAsyncRepositoryGetList(),),
         (MockAsyncRepositoryAdd(),),
         (MockAsyncRepositoryAddThrowException(),),
+        (MockAsyncRepositoryUpdate(),),
+        (MockAsyncRepositoryUpdateRaiseException(),),
     ],
 )
 def test_baseline_mock_async_repository(mock_repository: AsyncRepository):
-    """Verifies given mock repo is a valid baseline."""
+    """Verifies given repo is conforms to expected invariants."""
 
     # Verify the repository correctly subclasses async repo
     assert issubclass(type(mock_repository), AsyncRepository)
@@ -119,8 +148,10 @@ def test_baseline_mock_async_repository(mock_repository: AsyncRepository):
     # Verify the repo has no 'seen' aggregates
     assert len(mock_repository.seen) == 0
 
+    # Extend as needed if known invariants expand
 
-async def test_mock_async_repo_get_returns_correct_aggregate(
+
+async def test_async_repo_get_returns_correct_aggregate(
     mock_aggregate: Aggregate,
     mock_async_repository_get: AsyncRepository,
 ):
@@ -132,7 +163,7 @@ async def test_mock_async_repo_get_returns_correct_aggregate(
     assert agg.id == mock_aggregate.id
 
 
-async def test_mock_async_repo_get_returns_none_when_not_found(
+async def test_async_repo_get_returns_none_when_not_found(
     mock_aggregate: Aggregate,
     mock_async_repository_get: AsyncRepository,
 ):
@@ -144,7 +175,7 @@ async def test_mock_async_repo_get_returns_none_when_not_found(
     assert agg is None
 
 
-async def test_mock_async_repo_get_seen_is_correct(
+async def test_async_repo_get_seen_is_correct(
     mock_aggregate: Aggregate,
     mock_async_repository_get: AsyncRepository,
 ):
@@ -161,7 +192,7 @@ async def test_mock_async_repo_get_seen_is_correct(
     assert seen_agg.id == agg.id
 
 
-async def test_mock_async_repo_get_seen_is_correct_when_not_found(
+async def test_async_repo_get_seen_is_correct_when_not_found(
     mock_aggregate: Aggregate,
     mock_async_repository_get: AsyncRepository,
 ):
@@ -171,6 +202,45 @@ async def test_mock_async_repo_get_seen_is_correct_when_not_found(
     await mock_async_repository_get.get(id="NOT_FOUND")
     # Asserts AsyncRepository.get() adds the aggregate to the seen aggregates
     assert len(mock_async_repository_get.seen) == 0
+
+
+async def test_async_repo_get_list_returns_list(
+    mock_async_repository_get_list: AsyncRepository,
+):
+    """Verifies AsyncRespository get_list baseline is correct."""
+
+    aggregate_list = await mock_async_repository_get_list.get_list()
+
+    assert isinstance(aggregate_list, list)
+    # Mock repo implementation setup to return an arbitrary list
+    assert len(aggregate_list) > 0
+    # Assert the list is of aggregates
+    for agg in aggregate_list:
+        assert isinstance(agg, Aggregate)
+
+
+async def test_async_repo_get_list_seen_count_is_correct(
+    mock_async_repository_get_list: AsyncRepository,
+):
+    """Verifies AsyncRepository get_list invokes seen response for each aggregate."""
+
+    # Invoke get_list to setup testcase
+    aggregate_list = await mock_async_repository_get_list.get_list()
+    # Test the amount of seen aggregates matches amount in aggregate_list
+    assert len(mock_async_repository_get_list.seen) == len(aggregate_list)
+
+
+async def test_async_repo_get_list_seen_aggregates_are_correct(
+    mock_async_repository_get_list: AsyncRepository,
+):
+    """Verifies AsyncRepository get_list invokes seen response for each aggregate."""
+
+    # Invoke get_list to setup testcase
+    aggregate_list = await mock_async_repository_get_list.get_list()
+    # Test each aggregate in list has been seen
+    returned_agg_mapping = {agg.id: True for agg in aggregate_list}
+    for agg in mock_async_repository_get_list.seen:
+        assert returned_agg_mapping[agg.id]
 
 
 async def test_mock_async_repo_add_simple_call(
@@ -238,3 +308,29 @@ async def test_mock_async_repo_update_seen_is_correct(
     assert len(mock_async_repository_update.seen) == 1
     # Ensure it matches the mock agg
     assert mock_aggregate.id == mock_async_repository_update.seen.pop().id
+
+
+async def test_mock_async_repo_get_list_seen_is_correct(
+    mock_aggregate: Aggregate,
+    mock_async_repository_update: AsyncRepository,
+):
+    """Verifies AsyncRepository update invokes the seen response."""
+
+    # Invoke update to setup testcase
+    await mock_async_repository_update.update(mock_aggregate)
+    # Test that seen has one agg in it
+    assert len(mock_async_repository_update.seen) == 1
+    # Ensure it matches the mock agg
+    assert mock_aggregate.id == mock_async_repository_update.seen.pop().id
+
+
+async def test_mock_async_repo_get_returns_correct_aggregate(
+    mock_aggregate: Aggregate,
+    mock_async_repository_get: AsyncRepository,
+):
+    """Verifies AsyncRepository get returns expected MockAggregate."""
+
+    # Get the aggregate with the given id
+    agg = await mock_async_repository_get.get(id=mock_aggregate.id)
+    # Assert the returned id matches the given id
+    assert agg.id == mock_aggregate.id
