@@ -1,4 +1,6 @@
 aiohttp
 pytest
+pytest-asyncio
 pydantic
 pre-commit
+structlog

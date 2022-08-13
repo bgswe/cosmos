@@ -8,14 +8,6 @@ from microservices.repository import AsyncRepository, Repository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUOWFactory, UnitOfWork
 
 
-class InvalidWebhookURL(Exception):
-    pass
-
-
-class InvalidHealthCheckURL(Exception):
-    pass
-
-
 class FastAPIApp(FastAPI):
     """..."""
 
