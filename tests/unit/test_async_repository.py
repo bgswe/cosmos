@@ -39,10 +39,12 @@ def mock_async_repository_get() -> AsyncRepository:
 
 
 class MockAsyncRepositoryAdd(AsyncRepository[MockAggregate]):
-    """..."""
+    """Test implementation of AsyncRepository with '_add' method."""
 
     async def _add(self, aggregate: MockAggregate):
-        logger.msg("_add func in 'MockAsyncRepository'")
+        """Simple _add implemention w/ msg log as a simple indicator."""
+
+        logger.msg("_add func in 'MockAsyncRepositoryAdd'")
 
 
 @pytest.fixture
@@ -53,7 +55,7 @@ def mock_async_repository_add() -> AsyncRepository:
 
 
 class MockAsyncRepositoryAddThrowException(AsyncRepository[MockAggregate]):
-    """Test implementation of AsyncRepository which throws exception on _add."""
+    """Test implementation of AsyncRepository which throws exception on '_add'."""
 
     async def _add(self, aggregate: MockAggregate):
         """Raises an exception so we can ensure this method was invoked."""
@@ -62,10 +64,42 @@ class MockAsyncRepositoryAddThrowException(AsyncRepository[MockAggregate]):
 
 
 @pytest.fixture
-def mock_async_repository_add_throw_exception() -> AsyncRepository:
-    """Simple fixture to provide an instance of the '_add' w/ throw repository."""
+def mock_async_repository_add_raise_exception() -> AsyncRepository:
+    """Simple fixture to provide an instance of the '_add' w/ raise exception."""
 
     return MockAsyncRepositoryAddThrowException()
+
+
+class MockAsyncRepositoryUpdate(AsyncRepository[MockAggregate]):
+    """Test implementation of AsyncRepository with '_update' method."""
+
+    async def _update(self, aggregate: MockAggregate):
+        """Simple _update implemention w/ msg log as a simple indicator."""
+
+        logger.msg("_update func in 'MockAsyncRepositoryUpdate'")
+
+
+@pytest.fixture
+def mock_async_repository_update() -> AsyncRepository:
+    """Simple fixture to provide an instance of the 'update' repository."""
+
+    return MockAsyncRepositoryUpdate()
+
+
+class MockAsyncRepositoryUpdateRaiseException(AsyncRepository[MockAggregate]):
+    """Test implementation of AsyncRepository with '_update' w/ raise exception."""
+
+    async def _update(self, aggregate: MockAggregate):
+        """Simple _update implementation w/ raised exception."""
+
+        raise Exception
+
+
+@pytest.fixture
+def mock_async_repository_update_raise_exception() -> AsyncRepository:
+    """Simple fixture to provide an instance of the 'update' repository."""
+
+    return MockAsyncRepositoryUpdateRaiseException()
 
 
 @pytest.mark.parametrize(
@@ -73,6 +107,7 @@ def mock_async_repository_add_throw_exception() -> AsyncRepository:
     argvalues=[
         (MockAsyncRepositoryGet(),),
         (MockAsyncRepositoryAdd(),),
+        (MockAsyncRepositoryAddThrowException(),),
     ],
 )
 def test_baseline_mock_async_repository(mock_repository: AsyncRepository):
@@ -142,20 +177,20 @@ async def test_mock_async_repo_add_simple_call(
     mock_aggregate: Aggregate,
     mock_async_repository_add: AsyncRepository,
 ):
-    """Verifies AsyncRepository add can be invoked w/o issue."""
+    """Verifies AsyncRepository add is invoked w/o issue."""
 
     await mock_async_repository_add.add(mock_aggregate)
 
 
 async def test_mock_async_repo_add_calls__add(
     mock_aggregate: Aggregate,
-    mock_async_repository_add_throw_exception: AsyncRepository,
+    mock_async_repository_add_raise_exception: AsyncRepository,
 ):
     """Verifies AsyncRepository add invokes _add."""
 
     with pytest.raises(Exception):
-        # The mock repo has been setup to raise an
-        await mock_async_repository_add_throw_exception.add(mock_aggregate)
+        # The mock repo has been setup to raise an exception within _add
+        await mock_async_repository_add_raise_exception.add(mock_aggregate)
 
 
 async def test_mock_async_repo_add_seen_is_correct(
@@ -169,3 +204,37 @@ async def test_mock_async_repo_add_seen_is_correct(
     # Test that only one agg has been seen, and it is the aggregate added
     assert len(mock_async_repository_add.seen) == 1
     assert mock_aggregate.id == mock_async_repository_add.seen.pop().id
+
+
+async def test_mock_async_repo_update(
+    mock_aggregate: Aggregate,
+    mock_async_repository_update: AsyncRepository,
+):
+    """Verifies AsyncRepository update is invoked w/o issue."""
+
+    await mock_async_repository_update.update(mock_aggregate)
+
+
+async def test_mock_async_repo_update_raise_exception(
+    mock_aggregate: Aggregate,
+    mock_async_repository_update_raise_exception: AsyncRepository,
+):
+    """Verifies AsyncRepository update invokes _update."""
+
+    with pytest.raises(Exception):
+        # The mock repo has been setup to raise an exception within _update
+        await mock_async_repository_update_raise_exception.update(mock_aggregate)
+
+
+async def test_mock_async_repo_update_seen_is_correct(
+    mock_aggregate: Aggregate,
+    mock_async_repository_update: AsyncRepository,
+):
+    """Verifies AsyncRepository update invokes the seen response."""
+
+    # Invoke update to setup testcase
+    await mock_async_repository_update.update(mock_aggregate)
+    # Test that seen has one agg in it
+    assert len(mock_async_repository_update.seen) == 1
+    # Ensure it matches the mock agg
+    assert mock_aggregate.id == mock_async_repository_update.seen.pop().id

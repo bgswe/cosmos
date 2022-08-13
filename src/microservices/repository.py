@@ -1,6 +1,6 @@
 from typing import Generic, List, Set, TypeVar
 
-from .domain import Aggregate
+from microservices.domain import Aggregate
 
 T = TypeVar("T", bound=Aggregate)
 
