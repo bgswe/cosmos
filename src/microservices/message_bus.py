@@ -1,5 +1,4 @@
 import asyncio
-from abc import abstractmethod
 from typing import Callable, Dict, List, Protocol, Type, Union
 
 from microservices.domain import Command
@@ -10,12 +9,25 @@ Message = Union[Command, Event]
 
 
 class Publisher(Protocol):
-    @abstractmethod
+    """Object to provide a publish method."""
+
     def publish(self, event: Event):
-        raise NotImplementedError
+        """Publishes internal event to external event stream."""
+
+        ...
 
 
 class _MessageBus:
+    """Core engine that is synchronously driven by domain commands.
+
+    The MessageBus waits for messages sent to it through its handle
+    method, which can be either a Command, or Event. Commands are
+    client driven actions, while events originate from the system.
+    Handlers for each are given at initialization in addition to
+    a label for the domain, a UnitOfWork factory, and an optional
+    external publisher.
+    """
+
     def __init__(
         self,
         domain: Domain,
@@ -24,10 +36,16 @@ class _MessageBus:
         command_handlers: Dict[Type[Command], Callable] = None,
         publisher: Publisher = None,
     ):
+        assert event_handlers is not None and command_handlers is not None
+
         if event_handlers is None:
+            assert (
+                command_handlers.keys() > 0
+            )  # ensure given handler config isn't empty
             event_handlers = {}
 
         if command_handlers is None:
+            assert event_handlers.keys() > 0  # ensure given handler config isn't empty
             command_handlers = {}
 
         self.domain = domain
