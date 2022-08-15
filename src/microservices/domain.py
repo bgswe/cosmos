@@ -31,6 +31,8 @@ class Command(BaseModel):
 class Entity(ABC):
     """Base Entity of our domain model."""
 
+    id: str
+
     def __init__(self):
         """Entity initialize func
 

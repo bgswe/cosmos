@@ -4,23 +4,10 @@ import pytest
 
 from microservices.domain import Aggregate
 from microservices.repository import AsyncRepository
-from microservices.utils import get_logger, uuid4
+from microservices.utils import get_logger
+from tests.conftest import MockAggregate
 
 logger = get_logger()
-
-
-class MockAggregate(Aggregate):
-    """Simple test aggregate implementation."""
-
-    def __init__(self, id: str = None):
-        self.id = id if id else str(uuid4())
-
-
-@pytest.fixture
-def mock_aggregate() -> MockAggregate:
-    """Simple fixture to provide an instance of MockAggregate."""
-
-    return MockAggregate()
 
 
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
