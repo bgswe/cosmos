@@ -54,7 +54,7 @@ class MockAsyncRepositoryAdd(AsyncRepository[MockAggregate]):
     async def _add(self, aggregate: MockAggregate):
         """Simple _add implemention w/ msg log as a simple indicator."""
 
-        logger.msg("_add func in 'MockAsyncRepositoryAdd'")
+        logger.debug("_add func in 'MockAsyncRepositoryAdd'")
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ class MockAsyncRepositoryUpdate(AsyncRepository[MockAggregate]):
     async def _update(self, aggregate: MockAggregate):
         """Simple _update implemention w/ msg log as a simple indicator."""
 
-        logger.msg("_update func in 'MockAsyncRepositoryUpdate'")
+        logger.debug("_update func in 'MockAsyncRepositoryUpdate'")
 
 
 @pytest.fixture

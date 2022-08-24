@@ -1,43 +1,17 @@
-from typing import Generic, Iterator, TypeVar
+from typing import TypeVar
 
 import pytest
-from conftest import MockAsyncRepository
 
 from microservices.domain import Aggregate
-from microservices.events import Event
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
+from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, MockCollector
 
 T = TypeVar("T", bound=Aggregate)
 
 
 logger = get_logger()
-
-
-class MockAsyncUnitOfWork(Generic[T]):
-    def __init__(self, repository: AsyncRepository[T]) -> None:
-        """Ensure implementation takes an AsyncRepository on init."""
-
-        self._repository = repository
-
-    @property
-    def repository(self) -> AsyncRepository:
-        return self._repository
-
-    def collect_events(self) -> Iterator[Event]:
-        pass
-
-    async def __aenter__(self):
-        return None
-
-    async def __aexit__(self, *args):
-        logger.msg(args)
-
-
-@pytest.fixture
-def mock_async_unit_of_work(mock_async_repository: AsyncUnitOfWork) -> AsyncUnitOfWork:
-    return MockAsyncUnitOfWork(repository=mock_async_repository)
 
 
 async def test_mock_async_uow_is_valid_context_manager(
@@ -55,6 +29,7 @@ async def test_async_uow_factory_initializes():
     uow_factory = AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
+        collector=MockCollector(),
     )
 
     assert uow_factory is not None
@@ -65,6 +40,7 @@ def uow_factory() -> AsyncUnitOfWorkFactory:
     return AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
+        collector=MockCollector(),
     )
 
 

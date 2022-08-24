@@ -25,13 +25,3 @@ def get_logger():
         configure(processors=[JSONRenderer(indent=2, sort_keys=True)])
 
     return get_structlog_logger()
-
-
-# EventCollector = Callable[[Repository], Iterator[Event]]
-
-# def simple_collector(repository: Repository) -> Iterator[Event]:
-#     for aggregate in repository.seen:
-#         while aggregate.has_events:
-#             # I believe we yield to allow the handling of this event
-#             # to generate events itself
-#             yield aggregate.get_events().pop(0)
