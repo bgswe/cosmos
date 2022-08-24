@@ -209,7 +209,13 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_handlers=event_handlers,
     )
 
-    bus.handle(mock_event)
+    await bus.handle(mock_event)
 
+    # Invokes the list of handlers for proper event
     for flag in event_flags[mock_event.stream]:
         assert flag.invoked
+
+    # Does not invoke other handlers for other events
+    for event in [EventStream.MockB, EventStream.MockC]:
+        for flag in event_flags[event]:
+            assert not flag.invoked

@@ -6,8 +6,7 @@ from typing import Any, Dict, List, Type, Union
 from pydantic import BaseModel, constr
 
 from microservices.events import Event, EventStream
-
-from .utils import uuid4
+from microservices.utils import uuid4
 
 
 def uuid_constr() -> Type[str]:

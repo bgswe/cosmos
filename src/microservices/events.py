@@ -11,14 +11,14 @@ ConsumerConfig = namedtuple("ConsumerConfig", "name target retroactive")
 
 
 class Domain(Enum):
-    Registration = "registration"
+    """The registered domains of the system."""
+
+    AccountManagement = "account_management"
     Inspection = "inspection"
 
 
 class EventStream(Enum):
     """The registered event streams in the system."""
-
-    RegistrationNewOrganization = f"{Domain.Registration.value}.new_organization"
 
     InspectionNew = f"{Domain.Inspection.value}.new"
     InspectionUpdated = f"{Domain.Inspection.value}.updated"
@@ -47,20 +47,6 @@ class Event(BaseModel):
     @property
     def domain(self) -> str:
         return self.stream.value.split(".")[0]
-
-
-"""Registration Events."""
-
-
-class RegistrationNewOrganization(Event):
-    """..."""
-
-    stream: ClassVar[EventStream] = EventStream.RegistrationNewOrganization
-
-    organization_id: str
-    organization_name: str
-    organization_phone: str
-    organization_address: str
 
 
 """Inspection Events."""
@@ -129,7 +115,6 @@ class InspectionInvalidCancellation(Event):
 
 
 EVENTS = [
-    RegistrationNewOrganization,
     InspectionNew,
     InspectionUpdated,
     InspectionCancelled,

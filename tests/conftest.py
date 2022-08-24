@@ -3,7 +3,7 @@ from typing import Iterator
 import pytest
 
 from microservices.domain import Aggregate
-from microservices.events import Event
+from microservices.events import Event, EventStream
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, Collector
 from microservices.utils import get_logger, uuid4
@@ -23,6 +23,14 @@ def mock_aggregate() -> MockAggregate:
     """Simple fixture to provide an instance of MockAggregate."""
 
     return MockAggregate()
+
+
+@pytest.fixture
+def mock_a_event() -> Event:
+    class MockAEvent(Event):
+        stream = EventStream.MockA
+
+    return MockAEvent()
 
 
 class MockAsyncRepository(AsyncRepository[MockAggregate]):
