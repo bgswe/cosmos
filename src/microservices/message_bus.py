@@ -1,12 +1,9 @@
 import asyncio
-from typing import Dict, List, Protocol, Type, Union
+from typing import Dict, List, Protocol, Type
 
-from microservices.domain import Command
-from microservices.events import Domain, Event, EventStream
+from microservices.messages import Command, Domain, Event, EventStream, Message
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
-
-Message = Union[Command, Event]
 
 
 class CallbackProtocolWithName(Protocol):

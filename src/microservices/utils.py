@@ -1,14 +1,14 @@
-import uuid
+from uuid import UUID, uuid4
 
 from structlog import configure
 from structlog import get_logger as get_structlog_logger
 from structlog.processors import JSONRenderer
 
 
-def uuid4() -> str:
+def get_uuid() -> UUID:
     """Reduces uuid lib uuid4 generation to str type."""
 
-    return str(uuid.uuid4())
+    return uuid4()
 
 
 configured = False

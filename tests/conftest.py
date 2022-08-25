@@ -1,12 +1,13 @@
 from typing import Iterator
+from uuid import UUID
 
 import pytest
 
-from microservices.domain import Aggregate
+from microservices.domain import Aggregate, create_entity
 from microservices.events import Event, EventStream
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, Collector
-from microservices.utils import get_logger, uuid4
+from microservices.utils import get_logger
 
 logger = get_logger()
 
@@ -14,15 +15,19 @@ logger = get_logger()
 class MockAggregate(Aggregate):
     """Simple test aggregate implementation."""
 
-    def __init__(self, id: str = None):
-        self.id = id if id else str(uuid4())
+    def __init__(self, id: UUID):
+        self._id = id
+
+    @classmethod
+    def create(cls):
+        return create_entity(cls=cls)
 
 
 @pytest.fixture
 def mock_aggregate() -> MockAggregate:
     """Simple fixture to provide an instance of MockAggregate."""
 
-    return MockAggregate()
+    return MockAggregate.create()
 
 
 @pytest.fixture

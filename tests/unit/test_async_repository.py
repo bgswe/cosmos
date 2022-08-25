@@ -38,7 +38,7 @@ class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
         if kwargs.get("empty", None):
             return []
 
-        return [MockAggregate() for _ in range(5)]
+        return [MockAggregate.create() for _ in range(5)]
 
 
 @pytest.fixture

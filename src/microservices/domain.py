@@ -2,103 +2,89 @@ from __future__ import annotations
 
 from abc import ABC
 from typing import Any, Dict, List, Type, Union
-
-from pydantic import BaseModel, constr
+from uuid import UUID
 
 from microservices.events import Event, EventStream
-from microservices.utils import uuid4
-
-
-def uuid_constr() -> Type[str]:
-    """Returns configured constr from pydantic with UUIDv4 constraints."""
-
-    return constr(
-        min_length=36,
-        max_length=36,
-    )
-
-
-class Command(BaseModel):
-    """Base Command of our domain model.
-
-    Includes the client_id of the invoker of a given command.
-    """
-
-    client_id: uuid_constr()  # type: ignore
+from microservices.utils import get_uuid
 
 
 class Entity(ABC):
     """Base Entity of our domain model."""
 
-    id: str
-
-    def __init__(self):
-        """Entity initialize func
-
-        Sets id to new UUID if not specified by children __init__ functions, and
-        captures the values of the Entities private/public attrs upon initialization.
-        """
-
-        def func(e: Entity):
-            # Capture a snapshot of the values of this entity during initialization
-            initialized_values = {}
-
-            for attr, value in e.__dict__.items():
-                if isinstance(value, Entity):
-                    initialized_values[attr.strip("_")] = func(value)
-                elif attr not in ["_events", "_initialized_values"]:
-                    initialized_values[attr.strip("_")] = value
-
-            return initialized_values
-
-        self._initialized_values = func(self)
+    _id: UUID  # all entities will have id
 
     @property
-    def initialized_values(self) -> Dict[str, Any]:
-        return self._initialized_values
+    def id(self) -> UUID:
+        """Simple public getter for id."""
 
-    @property
-    def changed_values(self) -> Dict[str, Any]:
-        changed_values = {}
-
-        for attr, value in self.__dict__.items():
-            if attr not in ["_events", "_initialized_values"]:
-                key = attr.strip("_")
-
-                if isinstance(value, Entity):
-                    entity_changed_values = value.changed_values
-
-                    if len(entity_changed_values.keys()):
-                        changed_values[key] = entity_changed_values
-                else:
-                    if value != self.initialized_values[key]:
-                        changed_values[key] = value
-
-        return changed_values
+        return self._id
 
 
 class Aggregate(Entity, ABC):
-    """Aggregate to serve as an entry point into domain."""
+    """Class to serve as an entry point into domain."""
+
+    meta_attrs = ["_events", "_initialized_values"]
 
     def __init__(self):
         """Aggregate initialize function.
 
-        Creates new list to capture new events during this lifespan of an
-        aggregate.
+        Initializes an empty event list to capture events raised during the
+        lifetime of this aggregate instance. Also captures a snapshot of the
+        instance values upon initialization.
+
+        NOTE: Aggregate implementations must accept and id parameter in __init__
+        and assign the value to 'self._id'.
         """
-        super().__init__()
 
         self._events: List[Event] = []
+        self._initialized_values = self.to_dict()
 
     @property
-    def has_events(self) -> bool:
-        return len(self._events) > 0
+    def events(self) -> List[Event]:
+        """Simple public getter for events."""
+
+        return self._events
+
+    @property
+    def initialized_values(self) -> Dict[str, Any]:
+        """Simple public getter for initialized values."""
+
+        return self._initialized_values
+
+    @property
+    def changed_values(self) -> Dict[str, Any]:
+        """Calculates the diff between the init state and current state."""
+
+        current_values = self.to_dict()
+
+        return {
+            k: v
+            for k, v in current_values
+            if self._initialized_values[k] != current_values[k]
+        }
 
     def new_event(self, event: Event):
+        """Append a new event to the internal list of events."""
+
         self._events.append(event)
 
-    def get_events(self) -> List[Event]:
-        return self._events
+    def to_dict(self) -> Dict:
+        """Serialize aggregate as dict."""
+
+        def func(e: Entity):
+            # Capture a snapshot of the values of this entity during initialization
+            d = {}
+
+            for attr, value in e.__dict__.items():
+                if isinstance(value, Entity):
+                    d[attr.strip("_")] = func(value)
+                # This is essentially the list of 'Meta' attributes
+                elif attr not in Aggregate.meta_attrs:
+                    d[attr.strip("_")] = value
+
+            return d
+
+        return func(self)
 
 
 def create_entity(
@@ -107,12 +93,14 @@ def create_entity(
 ) -> Union[Entity, Aggregate]:
     """Encapsulates housekeeping tasks of entity creation.
 
-    Takes a subclass of Entity and a dictionary of kwargs which
-    is used as arguments to the subclass' __init__.
+    Creating a new instance of an Entity doesn't only arise
+    from creating a new Entity identity, so this function acts as
+    a wrapper for the creation process. A new UUID is generated
+    if not supplied via __init__ kwargs.
     """
     # Auto-assign UUID if not provided by entity creator
     if init_kwargs.get("id", None) is None:
-        init_kwargs = {**init_kwargs, "id": uuid4()}
+        init_kwargs = {**init_kwargs, "id": get_uuid()}
 
     return cls(**init_kwargs)
 
@@ -122,17 +110,17 @@ class Consumer(Aggregate):
 
     def __init__(
         self,
-        id: str,
+        id: UUID,
         stream: EventStream,
         name: str,
         acked_id: str,
         retroactive: bool,
     ):
-        self.id = id
-        self.stream = stream
-        self.name = name
-        self.acked_id = acked_id
-        self.retroactive = retroactive
+        self._id = id
+        self._stream = stream
+        self._name = name
+        self._acked_id = acked_id
+        self._retroactive = retroactive
 
         super().__init__()
 
@@ -144,6 +132,8 @@ class Consumer(Aggregate):
         id: str = None,
         retroactive: bool = True,
     ) -> Consumer:
+        """Standard create method for a Consumer aggregate."""
+
         new_consumer = create_entity(
             cls=cls,
             id=id,
