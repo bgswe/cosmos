@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  continuous-deployment:
+  continuous-integration:
     runs-on: ubuntu-latest
 
     steps:
@@ -22,5 +22,5 @@ jobs:
       - name: Install requirements.txt
         run: pip install -r requirements.txt
 
-      - name: Run pytest
+      - name: Run project tests
         run: pytest

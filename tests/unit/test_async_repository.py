@@ -4,23 +4,10 @@ import pytest
 
 from microservices.domain import Aggregate
 from microservices.repository import AsyncRepository
-from microservices.utils import get_logger, uuid4
+from microservices.utils import get_logger
+from tests.conftest import MockAggregate
 
 logger = get_logger()
-
-
-class MockAggregate(Aggregate):
-    """Simple test aggregate implementation."""
-
-    def __init__(self, id: str = None):
-        self.id = id if id else str(uuid4())
-
-
-@pytest.fixture
-def mock_aggregate() -> MockAggregate:
-    """Simple fixture to provide an instance of MockAggregate."""
-
-    return MockAggregate()
 
 
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
@@ -51,7 +38,7 @@ class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
         if kwargs.get("empty", None):
             return []
 
-        return [MockAggregate() for _ in range(5)]
+        return [MockAggregate.create() for _ in range(5)]
 
 
 @pytest.fixture
@@ -67,7 +54,7 @@ class MockAsyncRepositoryAdd(AsyncRepository[MockAggregate]):
     async def _add(self, aggregate: MockAggregate):
         """Simple _add implemention w/ msg log as a simple indicator."""
 
-        logger.msg("_add func in 'MockAsyncRepositoryAdd'")
+        logger.debug("_add func in 'MockAsyncRepositoryAdd'")
 
 
 @pytest.fixture
@@ -102,7 +89,7 @@ class MockAsyncRepositoryUpdate(AsyncRepository[MockAggregate]):
     async def _update(self, aggregate: MockAggregate):
         """Simple _update implemention w/ msg log as a simple indicator."""
 
-        logger.msg("_update func in 'MockAsyncRepositoryUpdate'")
+        logger.debug("_update func in 'MockAsyncRepositoryUpdate'")
 
 
 @pytest.fixture

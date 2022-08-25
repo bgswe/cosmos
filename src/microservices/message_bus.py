@@ -1,28 +1,61 @@
 import asyncio
-from abc import abstractmethod
-from typing import Callable, Dict, List, Protocol, Type, Union
+from typing import Dict, List, Protocol, Type
 
-from microservices.domain import Command
-from microservices.events import Domain, Event, EventStream
-from microservices.unit_of_work import AsyncUOWFactory
+from microservices.messages import Command, Domain, Event, EventStream, Message
+from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
+from microservices.utils import get_logger
 
-Message = Union[Command, Event]
+
+class CallbackProtocolWithName(Protocol):
+    """Simple interface to define __name__ attr on handlers."""
+
+    __name__: str
+
+
+class EventHandler(CallbackProtocolWithName):
+    """Callback Protocol for an EventHandler function."""
+
+    async def __call__(self, uow: AsyncUnitOfWork, event: Event):
+        ...
+
+
+class CommandHandler(CallbackProtocolWithName):
+    """Callback Protocol for a CommandHandler function."""
+
+    async def __call__(self, uow: AsyncUnitOfWork, command: Command):
+        ...
+
+
+logger = get_logger()
 
 
 class Publisher(Protocol):
-    @abstractmethod
+    """Object to provide a publish method."""
+
     def publish(self, event: Event):
-        raise NotImplementedError
+        """Publishes internal event to external event stream."""
+
+        ...
 
 
-class _MessageBus:
+class MessageBus:
+    """Core engine that is synchronously driven by domain commands.
+
+    The MessageBus waits for messages sent to it through its handle
+    method, which can be either a Command, or Event. Commands are
+    client driven actions, while events originate from the system.
+    Handlers for each are given at initialization in addition to
+    a label for the domain, a UnitOfWork factory, and an optional
+    external publisher.
+    """
+
     def __init__(
         self,
         domain: Domain,
-        uow_factory: AsyncUOWFactory,
-        event_handlers: Dict[EventStream, List[Callable]] = None,
-        command_handlers: Dict[Type[Command], Callable] = None,
-        publisher: Publisher = None,
+        publisher: Publisher,
+        uow_factory: AsyncUnitOfWorkFactory,
+        event_handlers: Dict[EventStream, List[EventHandler]] = None,
+        command_handlers: Dict[Type[Command], CommandHandler] = None,
     ):
         if event_handlers is None:
             event_handlers = {}
@@ -30,59 +63,117 @@ class _MessageBus:
         if command_handlers is None:
             command_handlers = {}
 
-        self.domain = domain
-        self.uow_factory = uow_factory
-        self.event_handlers = event_handlers
-        self.command_handlers = command_handlers
-        self.publisher = publisher
+        self._domain = domain
+        self._uow_factory = uow_factory
+        self._event_handlers = event_handlers
+        self._command_handlers = command_handlers
+        self._publisher = publisher
 
     async def handle(self, message: Message):
-        self.queue = [message]
+        """The external interface to send a message through the system.
 
-        while self.queue:
-            message = self.queue.pop(0)
+        This method takes a command or event and invokes the configured handlers
+        passed in upon initialization.
 
+        :param: message -> Command or Event entering the system
+        """
+
+        # Declares a queue to hold message, and any possibly raised future events
+        self._queue = [message]
+
+        # Process queue until all messages are handled and queue is empty
+        while self._queue:
+            message = self._queue.pop(0)  # first in, first out
+
+            log = logger.bind(message=message)
+
+            # Invoke proper handle method based on message type
             if isinstance(message, Event):
-                await self.handle_event(message)
+                await self._handle_event(message)
             elif isinstance(message, Command):
-                await self.handle_command(message)
+                await self._handle_command(message)
+
+            # Hopefully never needed, just in case
             else:
-                raise Exception(f"{message} was not an Event or Command")
+                err_message = "message is not of type Event, nor Command"
 
-    async def handle_event(self, event: Event):
-        # Only publish events that originate inside the domain, otherwise
-        # we run the chance of republishing the a previously published event.
-        # Handlers should be idempotent, but it still pollutes message broker.
-        if event.stream.value.split(".")[0] == self.domain and self.publisher:
-            # TODO: What if this fails?
-            await self.publisher.publish(event=event)
+                log = logger.bind(err_message=err_message, type=type(message))
+                log.error(err_message)
 
-        for handler in self.event_handlers[event.stream]:
-            try:
-                uow = self.uow_factory.get_uow()
-                await handler(uow=uow, event=event)
-                self.queue.extend(uow.collect_events())
+                raise Exception(f"{err_message}, type -> {type(message)}")
 
-            except Exception:
-                # logger.exception("Exception handling event %s", event)
-                continue
-
-    async def handle_command(self, command: Command):
-        # logger.debug("handling command %s", command)
-        try:
-            handler = self.command_handlers[type(command)]
-            uow = self.uow_factory.get_uow()
-            await handler(uow=uow, command=command)
-            self.queue.extend(uow.collect_events())
-
-        except Exception:
-            # logger.exception("Exception handling command %s", command)
-            raise
-
-
-class MessageBus(_MessageBus):
     def handle_no_await(self, message: Message):
-        """Provides way to invoke async handle w/o awaiting."""
+        """Provides interface to invoke async handle w/o awaiting."""
 
         loop = asyncio.get_running_loop()
-        loop.create_task(super().handle(message=message))
+        loop.create_task(self.handle(message=message))
+
+    async def _handle_event(self, event: Event):
+        """Coordinates lifecycle of event handling.
+
+        This method is responsible for publishing the event if it is raised
+        internally, invoking configured handlers for the specific
+        event stream, and collecting any events raised as part of handling
+        the given event.
+
+        :param: event -> the given event object to handle
+        """
+
+        # Only publish events that originate inside the domain, otherwise
+        # we run the chance of republishing a previously published event.
+        # Handlers should be idempotent, but it still pollutes message broker.
+        if event.domain == self._domain and self._publisher:
+            # TODO: What if this fails?
+            # Is it okay to commit failed publishes to the DB, and still
+            # handle the event internally?
+            await self._publisher.publish(event=event)
+
+        # Invoke all configured handlers with the given event
+        for handler in self._event_handlers.get(event.stream, []):
+            try:
+                # Create new UnitOfWork for use in handler
+                uow = self._uow_factory.get_uow()
+                await handler(uow=uow, event=event)
+                # Append all raised events to the message queue
+                self._queue.extend(uow.collect_events())
+
+            except Exception as e:
+                # Include the information required to possibly rerun
+                # failed handlers if necessary. More needed?
+                log = logger.bind(
+                    domain=event.domain,
+                    event_id=event.id,
+                    handler_name=handler.__name__,
+                    exception=e,
+                )
+                log.error("raised exception during event handling")
+
+                continue
+
+    async def _handle_command(self, command: Command):
+        """Coordinates lifecycle of event handling.
+
+        This method is responsible invoking configured handlers for the specific
+        command type, and collecting any events raised as part of handling
+        the given command.
+
+        :param: command -> the given event object to handle
+        """
+
+        try:
+            # Commands may only have one configured handler
+            handler = self._command_handlers[type(command)]
+            # Create new UnitOfWork and pass to the command handler
+            uow = self._uow_factory.get_uow()
+            await handler(uow=uow, command=command)
+            # Append all raised events to the message queue
+            self._queue.extend(uow.collect_events())
+
+        except Exception:
+            # Include the information required to possibly rerun
+            # failed handlers if necessary. More needed?
+            log = logger.bind(
+                command_dict=command.dict(),
+                handler_name=handler.__name__,
+            )
+            log.error("raised exception during command handling")

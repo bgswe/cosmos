@@ -4,3 +4,4 @@ pytest-asyncio
 pydantic
 pre-commit
 structlog
+mypy
