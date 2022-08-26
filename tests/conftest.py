@@ -16,11 +16,14 @@ class MockAggregate(Aggregate):
     """Simple test aggregate implementation."""
 
     def __init__(self, id: UUID):
-        self._id = id
+        """Most simple implementation of init."""
+
+        self._id = id  # must set _id attr
+        super().__init__()  # must call super init
 
     @classmethod
-    def create(cls):
-        return create_entity(cls=cls)
+    def create(cls, id: UUID = None) -> Aggregate:
+        return create_entity(cls=cls, id=id)
 
 
 @pytest.fixture

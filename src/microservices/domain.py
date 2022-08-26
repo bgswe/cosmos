@@ -19,6 +19,12 @@ class Entity(ABC):
 
         return self._id
 
+    @id.setter  # type: ignore
+    def raise_exception(self):
+        """Raise exception to prevent id from being changed during lifetime."""
+
+        raise AttributeError("cannot set id on an existing entity instance")
+
 
 class Aggregate(Entity, ABC):
     """Class to serve as an entry point into domain."""
@@ -33,7 +39,7 @@ class Aggregate(Entity, ABC):
         instance values upon initialization.
 
         NOTE: Aggregate implementations must accept and id parameter in __init__
-        and assign the value to 'self._id'.
+        and assign the value to 'self._id'. They must also invoke the super __init__.
         """
 
         self._events: List[Event] = []
@@ -59,7 +65,8 @@ class Aggregate(Entity, ABC):
 
         return {
             k: v
-            for k, v in current_values
+            for k, v in current_values.items()
+            # Only include k-v pairs where the value has changed
             if self._initialized_values[k] != current_values[k]
         }
 
@@ -98,9 +105,12 @@ def create_entity(
     a wrapper for the creation process. A new UUID is generated
     if not supplied via __init__ kwargs.
     """
+
     # Auto-assign UUID if not provided by entity creator
     if init_kwargs.get("id", None) is None:
         init_kwargs = {**init_kwargs, "id": get_uuid()}
+
+    # EVAL: What else could go here?
 
     return cls(**init_kwargs)
 
@@ -129,7 +139,7 @@ class Consumer(Aggregate):
         cls,
         stream: EventStream,
         name: str,
-        id: str = None,
+        id: UUID = None,
         retroactive: bool = True,
     ) -> Consumer:
         """Standard create method for a Consumer aggregate."""
