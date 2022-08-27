@@ -1,4 +1,3 @@
-from collections import namedtuple
 from datetime import datetime as dt
 from typing import ClassVar, Optional
 from uuid import UUID
@@ -6,8 +5,6 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from microservices.messages import Event, EventStream
-
-ConsumerConfig = namedtuple("ConsumerConfig", "name target retroactive")
 
 
 """Inspection Events."""

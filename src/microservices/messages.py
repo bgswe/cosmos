@@ -1,5 +1,6 @@
+from collections import namedtuple
 from enum import Enum
-from typing import ClassVar
+from typing import ClassVar, Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -47,6 +48,31 @@ class Event(Message):
     def domain(self) -> str:
         return self.stream.value.split(".")[0]
 
+
+class EventPublisher(Protocol):
+    """Object to provide a publish method."""
+
+    def publish(self, event: Event):
+        """Publishes internal event to external event stream."""
+
+        ...
+
+
+ConsumerConfig = namedtuple("ConsumerConfig", "name target retroactive")
+
+
+class EventConsumer(Protocol):
+    """..."""
+
+    def consume(self, config: ConsumerConfig):
+        ...
+
+class Consume(Protocol):
+    """..."""
+
+    def __call__(self, consumer: EventConsumer, config: ConsumerConfig):
+        ...
+        
 
 class Command(Message):
     """Base Command message type created for extension."""

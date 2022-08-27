@@ -149,13 +149,21 @@ class Consumer(Aggregate):
             id=id,
             stream=stream,
             name=name,
-            acked_id="0",
+            acked_id="0",  # deafult 'zero-value' of new consumer
             retroactive=retroactive,
         )
 
         # Tells mypy it's definitely a Consumer
         assert isinstance(new_consumer, Consumer)
 
-        # TODO: ...
+        # EVAL: What else needs to occur here? Should we create a new consumer
+        # event? Not sure if we would need that anytime, but possible good to
+        # generate events as a rule?
 
         return new_consumer
+
+    @property
+    def acked_id(self) -> str:
+        """Simple getter for '_acked_id'."""
+
+        return self._acked_id

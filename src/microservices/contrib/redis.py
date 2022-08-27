@@ -2,9 +2,7 @@ import asyncio
 import json
 import logging
 import os
-from typing import Any, Callable, Dict, List
-
-import redis
+from typing import Any, Callable, Dict, List, Protocol
 from redis import Redis
 
 from microservices.domain import Consumer
@@ -18,12 +16,16 @@ from microservices.events import (
 from microservices.message_bus import MessageBus
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUOWFactory
 
-logging.basicConfig(level=logging.INFO)
 
+class RedisClient(Protocol):
+    """Mirror for used methods from redis-py to easily mock a redis client."""
+
+    def xadd(name, fields, id='*', maxlen=None, approximate=True, nomkstream=False, minid=None, limit=None):
+        ...
 
 class RedisPublisher:
-    def __init__(self, client: Redis):
-        self._client = client
+    def __init__(self, redis: RedisClient):
+        self._redis = redis
 
     async def publish(self, event: Event):
         """..."""
@@ -31,7 +33,7 @@ class RedisPublisher:
         values = event.dict()
 
         try:
-            response = self._client.xadd(
+            response = self._redis.xadd(
                 name=event.stream.value,
                 fields={"values": json.dumps({values})},
             )
@@ -46,14 +48,14 @@ class RedisPublisher:
             # TODO: What todo when message publish fails?
 
 
-def get_redis_client() -> redis.Redis:
-    """..."""
+def get_redis_client() -> Redis:
+    """Encapsulated configuration management for redis-py client."""
 
     REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
     # Establish Redis client connection.
-    return redis.Redis(
+    return Redis(
         host=REDIS_HOST, port=REDIS_PORT, retry_on_timeout=True, decode_responses=True
     )
 
@@ -61,7 +63,7 @@ def get_redis_client() -> redis.Redis:
 async def read_stream(
     domain: Domain,
     uow_factory: AsyncUOWFactory,
-    client: redis.Redis,
+    client: Redis,
     consumer: Consumer,
     target: Callable[[AsyncUnitOfWork, Dict[str, Any]], None],
     sleep: int = 3,
