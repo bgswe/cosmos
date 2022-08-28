@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 
-from structlog import configure
-from structlog import get_logger as get_structlog_logger
+from structlog.tracebacks import extract
+from structlog import configure, get_logger as get_structlog_logger
 from structlog.processors import JSONRenderer
 
 

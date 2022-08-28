@@ -1,3 +1,4 @@
+import structlog
 import asyncio
 from typing import Dict, List, Protocol, Type
 from uuid import UUID
@@ -61,7 +62,7 @@ class MessageBus:
         self._command_handlers = command_handlers
         self._publisher = publisher
 
-        self._queue = {}
+        self._queue: Dict[str, List[Message]] = {}
 
     async def handle(self, message: Message):
         """The external interface to send a message through the system.
@@ -73,9 +74,11 @@ class MessageBus:
         """
 
         # Declares a queue to hold message, and any possibly raised future events
-        parent_message_id = message.id
+        parent_message_id = message.id.hex
         self._queue[parent_message_id] = [message]
         
+        logger.debug("Top of bus handle", seed_message_id=parent_message_id, queue=self._queue[parent_message_id])
+
         # EVAL: I feel like this could provide some real value, by tracking
         # (at least internally) the sequence processed messages.
         message_sequence = []
@@ -85,7 +88,7 @@ class MessageBus:
         # Process queue until all messages are handled and queue is empty
         while self._queue[parent_message_id]:
             message = self._queue[parent_message_id].pop(0)  # first in, first out
-            message_sequence.append(message.id)  # document message in sequence
+            message_sequence.append(message.id.hex)  # document message in sequence
 
             # Invoke proper handle method based on message type
             if isinstance(message, Event):
@@ -114,7 +117,7 @@ class MessageBus:
         loop = asyncio.get_running_loop()
         loop.create_task(self.handle(message=message))
 
-    async def _handle_event(self,  parent_message_id: UUID, event: Event):
+    async def _handle_event(self,  parent_message_id: str, event: Event):
         """Coordinates lifecycle of event handling.
 
         This method is responsible for publishing the event if it is raised
@@ -151,12 +154,13 @@ class MessageBus:
                     event_id=event.id,
                     handler_name=handler.__name__,
                     exception=e,
+                    traceback=structlog.tracebacks.extract(type(e), e, e.__traceback__),
                 )
                 log.error("raised exception during event handling")
 
                 continue
 
-    async def _handle_command(self, parent_message_id: UUID, command: Command):
+    async def _handle_command(self, parent_message_id: str, command: Command):
         """Coordinates lifecycle of event handling.
 
         This method is responsible invoking configured handlers for the specific

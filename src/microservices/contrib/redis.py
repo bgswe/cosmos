@@ -48,6 +48,10 @@ class RedisPublisher:
             # TODO: What todo when message publish fails?
 
 
+class RedisConsumer:
+    pass
+
+
 def get_redis_client() -> Redis:
     """Encapsulated configuration management for redis-py client."""
 

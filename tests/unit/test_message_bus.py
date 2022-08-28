@@ -1,14 +1,16 @@
 from __future__ import annotations
+from curses import nonl
 
-from typing import Tuple
+from typing import Iterator, List, Tuple
 
 import pytest
 
 from microservices.events import Event, EventStream
 from microservices.message_bus import EventHandler, MessageBus
+from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
-from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, MockCollector
+from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, mock_collect
 
 logger = get_logger()
 
@@ -30,7 +32,7 @@ def empty_message_bus() -> MessageBus:
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
     )
 
@@ -69,7 +71,7 @@ class MockEventHandlerFactory:
 
             was_invoked.mark_invoked()
 
-            log = logger.bind(event_dict=mock_event.dict())
+            log = logger.bind(event_dict=event.dict())
             log.debug("mock_event_handler invoked")
 
         return was_invoked, mock_event_handler
@@ -91,7 +93,7 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
     )
 
@@ -119,7 +121,7 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
         # mock_event is from stream MockA, so we handle MockB only
         event_handlers={EventStream.MockB: [handler]},
@@ -145,7 +147,7 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
         event_handlers={EventStream.MockA: [handler]},
     )
@@ -170,7 +172,7 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
         event_handlers={EventStream.MockA: [handler_a, handler_b]},
     )
@@ -204,7 +206,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collector=MockCollector(),
+            collect=mock_collect,
         ),
         event_handlers=event_handlers,
     )
@@ -219,3 +221,52 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
     for event in [EventStream.MockB, EventStream.MockC]:
         for flag in event_flags[event]:
             assert not flag.invoked
+
+
+def mock_collect_spoofed_event():
+    first = True
+
+    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+        """Simple test collect that returns the seen aggregates in a new list."""
+
+        nonlocal first
+        if first:
+            class MockBEvent(Event):
+                stream = EventStream.MockB
+
+            first = False
+
+            return [MockBEvent()]
+
+        return [*repository.seen]
+    
+    return mock_collect
+
+
+
+async def test_message_bus_handles_message_which_raises_additional_events(
+    mock_a_event: Event,
+    mock_event_handler_factory: MockEventHandlerFactory,
+):
+    """Verifies the message bus correctly handles a message's downstream events."""
+
+    mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
+
+    bus = MessageBus(
+        domain="test",
+        publisher=MockPublisher,
+        uow_factory=AsyncUnitOfWorkFactory(
+            uow_cls=MockAsyncUnitOfWork,
+            repository_cls=MockAsyncRepository,
+            collect=mock_collect_spoofed_event(),
+        ),
+        event_handlers={
+            EventStream.MockA: [mock_event_handler_factory.get()[1]],
+            EventStream.MockB: [mock_b_handler],
+        },
+    )
+
+    await bus.handle(mock_a_event)
+
+    assert mock_b_handler_invoked.invoked
+    

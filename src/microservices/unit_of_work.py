@@ -9,10 +9,10 @@ from microservices.repository import AsyncRepository
 T = TypeVar("T", bound=Aggregate)
 
 
-class Collector(Protocol):
-    """Object to provide an abstracted collect method."""
+class Collect(Protocol):
+    """Callback protocol to provide an abstracted collect method."""
 
-    def collect(self, repository: AsyncRepository) -> Iterator[Event]:
+    def __call__(repository: AsyncRepository) -> Iterator[Event]:
         """An interface to collect events from a repository"""
 
         ...
@@ -31,7 +31,7 @@ class AsyncUnitOfWork(Protocol[T]):
     each entity having a repository if necessary.
     """
 
-    def __init__(self, repository: AsyncRepository, collector: Collector):
+    def __init__(self, repository: AsyncRepository, collect: Collect):
         ...
 
     def repository(self, repository) -> AsyncRepository:
@@ -62,18 +62,18 @@ class AsyncUnitOfWorkFactory:
         self,
         uow_cls: Type[AsyncUnitOfWork],
         repository_cls: Type[AsyncRepository],
-        collector: Collector,
+        collect: Collect,
     ):
         """Takes a uow class and repo class, and saves for use in uow creation."""
 
         self._uow_cls = uow_cls
         self._repo_cls = repository_cls
-        self._collector = collector
+        self._collect = collect
 
     def get_uow(self) -> AsyncUnitOfWork:
         """Create and return a new uow instance."""
 
         return self._uow_cls(
             repository=self._repo_cls(),
-            collector=self._collector,
+            collect=self._collect,
         )
