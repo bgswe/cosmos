@@ -62,9 +62,9 @@ class MessageBus:
         self._command_handlers = command_handlers
         self._publisher = publisher
 
-        self._queue: Dict[str, List[Message]] = {}
+        self._queue: Dict[UUID, List[Message]] = {}
 
-    async def handle(self, message: Message):
+    async def handle(self, message: Message) -> List[UUID]:
         """The external interface to send a message through the system.
 
         This method takes a command or event and invokes the configured handlers
@@ -74,10 +74,14 @@ class MessageBus:
         """
 
         # Declares a queue to hold message, and any possibly raised future events
-        parent_message_id = message.id.hex
-        self._queue[parent_message_id] = [message]
+        seed_id = message.id
+        self._queue[seed_id] = [message]
         
-        logger.debug("Top of bus handle", seed_message_id=parent_message_id, queue=self._queue[parent_message_id])
+        logger.debug(
+            "Top of bus handle",
+            seed_message_id=seed_id,
+            queue=self._queue[seed_id],
+        )
 
         # EVAL: I feel like this could provide some real value, by tracking
         # (at least internally) the sequence processed messages.
@@ -86,15 +90,15 @@ class MessageBus:
         log = logger.bind(message=message)
 
         # Process queue until all messages are handled and queue is empty
-        while self._queue[parent_message_id]:
-            message = self._queue[parent_message_id].pop(0)  # first in, first out
-            message_sequence.append(message.id.hex)  # document message in sequence
+        while self._queue[seed_id]:
+            message = self._queue[seed_id].pop(0)  # first in, first out
+            message_sequence.append(message.id)  # document message in sequence
 
             # Invoke proper handle method based on message type
             if isinstance(message, Event):
-                await self._handle_event(parent_message_id=parent_message_id, event=message)
+                await self._handle_event(seed_id=seed_id, event=message)
             elif isinstance(message, Command):
-                await self._handle_command(parent_message_id=parent_message_id, command=message)
+                await self._handle_command(seed_id=seed_id, command=message)
 
             # Hopefully never needed, just in case
             else:
@@ -106,10 +110,12 @@ class MessageBus:
                 raise Exception(f"{err_message}, type -> {type(message)}")
 
         # Cleanup the event trail here
-        del self._queue[parent_message_id]
+        del self._queue[seed_id]
         
         log = log.bind(message_sequence=message_sequence)
-        log.info("message finished handling")
+        log.debug("message finished handling")
+
+        return message_sequence
 
     def handle_no_await(self, message: Message):
         """Provides interface to invoke async handle w/o awaiting."""
@@ -117,7 +123,7 @@ class MessageBus:
         loop = asyncio.get_running_loop()
         loop.create_task(self.handle(message=message))
 
-    async def _handle_event(self,  parent_message_id: str, event: Event):
+    async def _handle_event(self,  seed_id: UUID, event: Event):
         """Coordinates lifecycle of event handling.
 
         This method is responsible for publishing the event if it is raised
@@ -144,7 +150,7 @@ class MessageBus:
                 uow = self._uow_factory.get_uow()
                 await handler(uow=uow, event=event)
                 # Append all raised events to the message queue
-                self._queue[parent_message_id].extend(uow.collect_events())
+                self._queue[seed_id].extend(uow.collect_events())
 
             except Exception as e:
                 # Include the information required to possibly rerun
@@ -160,7 +166,7 @@ class MessageBus:
 
                 continue
 
-    async def _handle_command(self, parent_message_id: str, command: Command):
+    async def _handle_command(self, seed_id: UUID, command: Command):
         """Coordinates lifecycle of event handling.
 
         This method is responsible invoking configured handlers for the specific
@@ -177,7 +183,7 @@ class MessageBus:
             uow = self._uow_factory.get_uow()
             await handler(uow=uow, command=command)
             # Append all raised events to the message queue
-            self._queue[parent_message_id].extend(uow.collect_events())
+            self._queue[seed_id].extend(uow.collect_events())
 
         except Exception:
             # Include the information required to possibly rerun

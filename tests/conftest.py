@@ -33,12 +33,31 @@ def mock_aggregate() -> MockAggregate:
     return MockAggregate.create()
 
 
+class MockAEvent(Event):
+    stream = EventStream.MockA
+
+
 @pytest.fixture
 def mock_a_event() -> Event:
-    class MockAEvent(Event):
-        stream = EventStream.MockA
-
     return MockAEvent()
+
+
+class MockBEvent(Event):
+    stream = EventStream.MockB
+
+
+@pytest.fixture
+def mock_b_event() -> Event:
+    return MockBEvent()
+
+
+class MockCEvent(Event):
+    stream = EventStream.MockC
+
+    
+@pytest.fixture
+def mock_c_event() -> Event:
+    return MockCEvent()
 
 
 class MockAsyncRepository(AsyncRepository[MockAggregate]):

@@ -1,16 +1,16 @@
 from __future__ import annotations
 from curses import nonl
 
-from typing import Iterator, List, Tuple
+from typing import Callable, Iterator, List, Tuple
 
 import pytest
 
 from microservices.events import Event, EventStream
 from microservices.message_bus import EventHandler, MessageBus
 from microservices.repository import AsyncRepository
-from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
+from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
 from microservices.utils import get_logger
-from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, mock_collect
+from tests.conftest import MockAEvent, MockAsyncRepository, MockAsyncUnitOfWork, MockBEvent, mock_collect
 
 logger = get_logger()
 
@@ -223,20 +223,21 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
             assert not flag.invoked
 
 
-def mock_collect_spoofed_event():
+@pytest.fixture
+def mock_collect_spoofed_event(mock_b_event: Event) -> Collect:
     first = True
 
     def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
         """Simple test collect that returns the seen aggregates in a new list."""
 
+        # NOTE: This is a relatively easy way to spoof a handler raising an event
+        # thorough handling. There may be other/better ways to do this, possibly
+        # through the repo itself.
         nonlocal first
         if first:
-            class MockBEvent(Event):
-                stream = EventStream.MockB
-
             first = False
 
-            return [MockBEvent()]
+            return [mock_b_event]
 
         return [*repository.seen]
     
@@ -244,9 +245,10 @@ def mock_collect_spoofed_event():
 
 
 
-async def test_message_bus_handles_message_which_raises_additional_events(
+async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_a_event: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
+    mock_collect_spoofed_event: Collect,
 ):
     """Verifies the message bus correctly handles a message's downstream events."""
 
@@ -258,15 +260,156 @@ async def test_message_bus_handles_message_which_raises_additional_events(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect_spoofed_event(),
+            collect=mock_collect_spoofed_event,
         ),
         event_handlers={
+            # We don't require the invocation flag for this event, just grab a handler
             EventStream.MockA: [mock_event_handler_factory.get()[1]],
             EventStream.MockB: [mock_b_handler],
         },
     )
 
     await bus.handle(mock_a_event)
+    # We want to verify that the spoofed MockB event is correctly handled, and
+    # the configured handler invoked
+    assert mock_b_handler_invoked.invoked
+
+
+@pytest.fixture
+def mock_collect_spoofed_event_sequence(
+    mock_b_event: Event,
+    mock_c_event: Event,
+) -> Collect:
+    count = 0
+
+    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+        """Simple test collect that returns the seen aggregates in a new list."""
+
+        # NOTE: This is a relatively easy way to spoof a handler raising an event
+        # thorough handling. There may be other/better ways to do this, possibly
+        # through the repo itself.
+        nonlocal count
+
+        match count:
+            case 0:
+                count += 1
+                return [mock_b_event]  # simulate MockB raised in MockA handler
+            case 1:
+                count += 1
+                return [mock_c_event]  # simulate MockC raised in MockB handler
+
+        return [*repository.seen]
+    
+    return mock_collect
+
+
+async def test_message_bus_handle_calls_correct_event_sequence(
+    mock_a_event: Event,
+    mock_event_handler_factory: MockEventHandlerFactory,
+    mock_collect_spoofed_event_sequence: Collect,
+):
+    """..."""
+
+    mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
+    mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
+
+    bus = MessageBus(
+        domain="test",
+        publisher=MockPublisher,
+        uow_factory=AsyncUnitOfWorkFactory(
+            uow_cls=MockAsyncUnitOfWork,
+            repository_cls=MockAsyncRepository,
+            collect=mock_collect_spoofed_event_sequence,
+        ),
+        event_handlers={
+            # We don't require the invocation flag for this event, just grab a handler
+            EventStream.MockA: [mock_event_handler_factory.get()[1]],
+            EventStream.MockB: [mock_b_handler],
+            EventStream.MockC: [mock_c_handler],
+        },
+    )
+
+    seq = await bus.handle(mock_a_event)
 
     assert mock_b_handler_invoked.invoked
+    assert mock_c_handler_invoked.invoked
+
+
+@pytest.fixture
+def mock_collect_spoofed_event_sequence_many() -> Tuple[List[Event], Collect]:
+    count = 0
+
+    events = [
+        MockBEvent(),
+        MockAEvent(),
+        MockBEvent(),
+        MockAEvent()
+    ]
+
+    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+        """Simple test collect that returns the seen aggregates in a new list."""
+
+        # NOTE: This is a relatively easy way to spoof a handler raising an event
+        # thorough handling. There may be other/better ways to do this, possibly
+        # through the repo itself.
+        nonlocal count
+
+        match count:
+            case 0:
+                count += 1
+                return [events[0]]  # simulate MockB raised in MockA handler
+            case 1:
+                count += 1
+                return [events[1]]  # simulate MockC raised in MockB handler
+            case 2:
+                count += 1
+                return [events[2]]  # simulate MockB raised in MockA handler
+            case 3:
+                count += 1
+                return [events[3]]  # simulate MockC raised in MockB handler
+
+        return [*repository.seen]
     
+    return events, mock_collect
+
+
+async def test_message_bus_handle_calls_correct_event_sequence_many(
+    mock_a_event: Event,
+    mock_event_handler_factory: MockEventHandlerFactory,
+    mock_collect_spoofed_event_sequence_many: Tuple[List[Event], Collect],
+):
+    """..."""
+
+    _, mock_a_handler = mock_event_handler_factory.get()
+    _, mock_b_handler = mock_event_handler_factory.get()
+    mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
+
+    mock_events, mock_collect = mock_collect_spoofed_event_sequence_many
+
+    bus = MessageBus(
+        domain="test",
+        publisher=MockPublisher,
+        uow_factory=AsyncUnitOfWorkFactory(
+            uow_cls=MockAsyncUnitOfWork,
+            repository_cls=MockAsyncRepository,
+            collect=mock_collect,
+        ),
+        event_handlers={
+            # We don't require the invocation flag for this event, just grab a handler
+            EventStream.MockA: [mock_a_handler],
+            EventStream.MockB: [mock_b_handler],
+            EventStream.MockC: [mock_c_handler],
+        },
+    )
+
+    seq = await bus.handle(mock_a_event)
+
+    logger.debug("handled seq", seq=seq)
+
+    # No C events raised, verify not invoked
+    assert not mock_c_handler_invoked.invoked
+
+    # Iterate through spoofed sequence of raised events,
+    # Verify the returned sequence from handle matches
+    for i, e in enumerate([mock_a_event, *mock_events]):
+        assert e.id.hex == seq[i].hex
