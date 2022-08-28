@@ -6,7 +6,7 @@ from microservices.domain import Aggregate
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
-from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, MockCollector
+from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, mock_collect
 
 T = TypeVar("T", bound=Aggregate)
 
@@ -29,7 +29,7 @@ async def test_async_uow_factory_initializes():
     uow_factory = AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
-        collector=MockCollector(),
+        collect=mock_collect,
     )
 
     assert uow_factory is not None
@@ -40,7 +40,7 @@ def uow_factory() -> AsyncUnitOfWorkFactory:
     return AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
-        collector=MockCollector(),
+        collect=mock_collect,
     )
 
 

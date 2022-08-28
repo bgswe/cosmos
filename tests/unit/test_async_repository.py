@@ -13,7 +13,7 @@ logger = get_logger()
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get' method."""
 
-    async def _get(self, id: str) -> MockAggregate | None:
+    async def _get(self, id: str) -> MockAggregate:
         """Simulates returning an aggregate or None if 'Not Found'."""
 
         if id == "NOT_FOUND":  # pass this str as id to simulate Not Found

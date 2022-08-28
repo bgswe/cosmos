@@ -6,7 +6,7 @@ import pytest
 from microservices.domain import Aggregate, create_entity
 from microservices.events import Event, EventStream
 from microservices.repository import AsyncRepository
-from microservices.unit_of_work import AsyncUnitOfWork, Collector
+from microservices.unit_of_work import AsyncUnitOfWork, Collect
 from microservices.utils import get_logger
 
 logger = get_logger()
@@ -16,11 +16,14 @@ class MockAggregate(Aggregate):
     """Simple test aggregate implementation."""
 
     def __init__(self, id: UUID):
-        self._id = id
+        """Most simple implementation of init."""
+
+        self._id = id  # must set _id attr
+        super().__init__()  # must call super init
 
     @classmethod
-    def create(cls):
-        return create_entity(cls=cls)
+    def create(cls, id: UUID = None) -> Aggregate:
+        return create_entity(cls=cls, id=id)
 
 
 @pytest.fixture
@@ -30,12 +33,31 @@ def mock_aggregate() -> MockAggregate:
     return MockAggregate.create()
 
 
+class MockAEvent(Event):
+    stream = EventStream.MockA
+
+
 @pytest.fixture
 def mock_a_event() -> Event:
-    class MockAEvent(Event):
-        stream = EventStream.MockA
-
     return MockAEvent()
+
+
+class MockBEvent(Event):
+    stream = EventStream.MockB
+
+
+@pytest.fixture
+def mock_b_event() -> Event:
+    return MockBEvent()
+
+
+class MockCEvent(Event):
+    stream = EventStream.MockC
+
+    
+@pytest.fixture
+def mock_c_event() -> Event:
+    return MockCEvent()
 
 
 class MockAsyncRepository(AsyncRepository[MockAggregate]):
@@ -49,13 +71,10 @@ class MockAsyncRepository(AsyncRepository[MockAggregate]):
     pass
 
 
-class MockCollector:
-    """Simple test implementation of a collector."""
+def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+    """Simple test collect that returns the seen aggregates in a new list."""
 
-    def collect(self, repository: AsyncRepository) -> Iterator[Event]:
-        """Simple test collect that returns the seen aggregates in a new list."""
-
-        return [*repository.seen]
+    return [*repository.seen]
 
 
 @pytest.fixture
@@ -64,11 +83,11 @@ def mock_async_repository() -> AsyncRepository:
 
 
 class MockAsyncUnitOfWork:
-    def __init__(self, repository: AsyncRepository, collector: Collector):
+    def __init__(self, repository: AsyncRepository, collect: Collect):
         """Takes in a repo and a Collector object for use in UnitOfWork."""
 
         self._repository = repository
-        self._collector = collector
+        self._collect = collect
 
     async def __aenter__(self):
         """Simple test implementation."""
@@ -89,12 +108,12 @@ class MockAsyncUnitOfWork:
     def collect_events(self) -> Iterator[Event]:
         """Test implementation of collect_events."""
 
-        return self._collector.collect(repository=self._repository)
+        return self._collect(repository=self._repository)
 
 
 @pytest.fixture
 def mock_async_unit_of_work(mock_async_repository: AsyncUnitOfWork) -> AsyncUnitOfWork:
     return MockAsyncUnitOfWork(
         repository=mock_async_repository,
-        collector=MockCollector(),
+        collect=mock_collect,
     )
