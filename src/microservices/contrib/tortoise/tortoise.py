@@ -2,10 +2,12 @@ import logging
 from functools import reduce
 from typing import Any, Dict, Generic, List, Tuple, TypeVar
 
+from asyncpg import connect
 from tortoise import Tortoise
 from tortoise.backends.base.client import TransactionContext
 from tortoise.transactions import in_transaction
 
+from microservices.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
 from microservices.domain import Aggregate
 from microservices.repository import AsyncRepository, Repository
 from microservices.unit_of_work import EventCollector, simple_collector
@@ -78,7 +80,7 @@ def aggregate_related_object_fields(input: Dict[str, Dict]) -> Dict[str, Any]:
 T = TypeVar("T", bound=Aggregate)
 
 
-class TortoiseUOW(Generic[T]):
+class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
     def __init__(
         self,
         # TODO: Evaluate this being unused??
@@ -91,6 +93,7 @@ class TortoiseUOW(Generic[T]):
         else:
             self._collector = simple_collector
 
+        self._connection = connect()
         self._repo = repository
 
     async def __aenter__(self):
@@ -111,17 +114,6 @@ class TortoiseUOW(Generic[T]):
     @repository.setter
     def repository(self, value: AsyncRepository[T]):
         self._repo = value
-
-    async def query(
-        self, query: str, params: List[Any] = None
-    ) -> Tuple[int, List[Dict[str, Any]]]:
-        try:
-            row_count, results = await self._tc.connection.execute_query(query, params)
-        except Exception as e:
-            logging.error("error running TortoiseUOW.query")
-            logging.error("Exception:", e)
-
-        return (row_count, [aggregate_related_object_fields(r) for r in results])
 
     async def insert(self, sql: str, params: List[Any]) -> str | None:
         try:

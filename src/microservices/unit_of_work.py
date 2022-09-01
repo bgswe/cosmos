@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Iterator, Protocol, Type, TypeVar, runtime_checkable
+from typing import Any, Iterator, Protocol, Type, TypeVar, runtime_checkable
 
 from microservices.domain import Aggregate
 from microservices.events import Event
@@ -26,9 +26,6 @@ class AsyncUnitOfWork(Protocol[T]):
     responsibility is providing a single context for a repository to
     share. If any repository action fails, all previous changes up to
     that point shall be reverted.
-
-    TODO: Design way to handle multiple repositories. This will support
-    each entity having a repository if necessary.
     """
 
     def __init__(self, repository: AsyncRepository, collect: Collect):
@@ -46,13 +43,8 @@ class AsyncUnitOfWork(Protocol[T]):
     async def __aexit__(self, *args):
         ...
 
-    # TODO: REMOVE THIS COMMENT. Leaving temporarily while
-    # redesigning how to use sql statements.
-    # @abstractmethod
-    # async def query(
-    #     self, query: str, params: List[Any] = None
-    # ) -> Tuple[int, List[Dict[str, Any]]]:
-    #     raise NotImplementedError
+    async def transaction() -> Any:
+        ...
 
 
 class AsyncUnitOfWorkFactory:
