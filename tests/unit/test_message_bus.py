@@ -4,9 +4,9 @@ from typing import Iterable, List, Tuple
 
 import pytest
 
+from microservices.domain import Domain
 from microservices.events import Event, EventStream
 from microservices.message_bus import EventHandler, MessageBus
-from microservices.messages import Domain
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
 from microservices.utils import get_logger

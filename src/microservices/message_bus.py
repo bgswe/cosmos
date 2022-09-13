@@ -4,7 +4,7 @@ from uuid import UUID
 
 import structlog
 
-from microservices.messages import (
+from microservices.domain import (
     Command,
     Domain,
     Event,
