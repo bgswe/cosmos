@@ -2,8 +2,7 @@ from uuid import UUID
 
 import pytest
 
-from microservices.domain import Aggregate, Entity, create_entity
-from microservices.messages import Event, EventStream
+from microservices.domain import Aggregate, Entity, Event, EventStream, create_entity
 from microservices.utils import get_logger, get_uuid
 from tests.conftest import MockAggregate
 

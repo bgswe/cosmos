@@ -14,6 +14,13 @@ from microservices.utils import get_logger
 logger = get_logger()
 
 
+@pytest.fixture()
+def mock_uuid() -> UUID:
+    """Returns a known mock UUID for use when it's needed to be a specific value."""
+
+    return UUID("11111111-1111-1111-1111-111111111111")
+
+
 class MockAggregate(Aggregate):
     """Simple test aggregate implementation."""
 
