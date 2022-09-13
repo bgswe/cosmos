@@ -1,34 +1,35 @@
-import structlog
 import asyncio
 from typing import Dict, List, Protocol, Type
 from uuid import UUID
 
-from microservices.messages import Command, Domain, Event, EventPublisher, EventStream, Message
+import structlog
+
+from microservices.messages import (
+    Command,
+    Domain,
+    Event,
+    EventPublish,
+    EventStream,
+    Message,
+)
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
 
-
-class CallbackProtocolWithName(Protocol):
-    """Simple interface to define __name__ attr on handlers."""
-
-    __name__: str
+logger = get_logger()
 
 
-class EventHandler(CallbackProtocolWithName):
+class EventHandler(Protocol):
     """Callback Protocol for an EventHandler function."""
 
     async def __call__(self, uow: AsyncUnitOfWork, event: Event):
         ...
 
 
-class CommandHandler(CallbackProtocolWithName):
+class CommandHandler(Protocol):
     """Callback Protocol for a CommandHandler function."""
 
     async def __call__(self, uow: AsyncUnitOfWork, command: Command):
         ...
-
-
-logger = get_logger()
 
 
 class MessageBus:
@@ -45,7 +46,7 @@ class MessageBus:
     def __init__(
         self,
         domain: Domain,
-        publisher: EventPublisher,
+        event_publish: EventPublish,
         uow_factory: AsyncUnitOfWorkFactory,
         event_handlers: Dict[EventStream, List[EventHandler]] = None,
         command_handlers: Dict[Type[Command], CommandHandler] = None,
@@ -60,7 +61,7 @@ class MessageBus:
         self._uow_factory = uow_factory
         self._event_handlers = event_handlers
         self._command_handlers = command_handlers
-        self._publisher = publisher
+        self._event_publish = event_publish
 
         self._queue: Dict[UUID, List[Message]] = {}
 
@@ -76,7 +77,7 @@ class MessageBus:
         # Declares a queue to hold message, and any possibly raised future events
         seed_id = message.id
         self._queue[seed_id] = [message]
-        
+
         logger.debug(
             "Top of bus handle",
             seed_message_id=seed_id,
@@ -111,7 +112,7 @@ class MessageBus:
 
         # Cleanup the event trail here
         del self._queue[seed_id]
-        
+
         log = log.bind(message_sequence=message_sequence)
         log.debug("message finished handling")
 
@@ -123,7 +124,7 @@ class MessageBus:
         loop = asyncio.get_running_loop()
         loop.create_task(self.handle(message=message))
 
-    async def _handle_event(self,  seed_id: UUID, event: Event):
+    async def _handle_event(self, seed_id: UUID, event: Event):
         """Coordinates lifecycle of event handling.
 
         This method is responsible for publishing the event if it is raised
@@ -137,11 +138,11 @@ class MessageBus:
         # Only publish events that originate inside the domain, otherwise
         # we run the chance of republishing a previously published event.
         # Handlers should be idempotent, but it still pollutes message broker.
-        if event.domain == self._domain and self._publisher:
+        if event.domain == self._domain and self._event_publish:
             # TODO: What if this fails?
             # Is it okay to commit failed publishes to the DB, and still
             # handle the event internally?
-            await self._publisher.publish(event=event)
+            await self._event_publish(event=event)
 
         # Invoke all configured handlers with the given event
         for handler in self._event_handlers.get(event.stream, []):
@@ -158,7 +159,6 @@ class MessageBus:
                 log = logger.bind(
                     domain=event.domain,
                     event_id=event.id,
-                    handler_name=handler.__name__,
                     exception=e,
                     traceback=structlog.tracebacks.extract(type(e), e, e.__traceback__),
                 )
@@ -190,6 +190,5 @@ class MessageBus:
             # failed handlers if necessary. More needed?
             log = logger.bind(
                 command_dict=command.dict(),
-                handler_name=handler.__name__,
             )
             log.error("raised exception during command handling")

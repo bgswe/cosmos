@@ -1,4 +1,6 @@
 from distutils.command.install_egg_info import safe_name
+from typing import List
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -13,7 +15,7 @@ logger = get_logger()
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get' method."""
 
-    async def _get(self, id: str) -> MockAggregate:
+    async def _get(self, id: UUID) -> MockAggregate:
         """Simulates returning an aggregate or None if 'Not Found'."""
 
         if id == "NOT_FOUND":  # pass this str as id to simulate Not Found
@@ -32,7 +34,7 @@ def mock_async_repository_get() -> AsyncRepository:
 class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get_list' method."""
 
-    async def _get_list(self, **kwargs) -> AsyncRepository:
+    async def _get_list(self, **kwargs) -> List[Aggregate]:
         """Simulates returning a list of aggregates."""
 
         if kwargs.get("empty", None):
@@ -157,7 +159,7 @@ async def test_async_repo_get_returns_none_when_not_found(
     """Verifies AsyncRepository get returns 'None' when agg is not found."""
 
     # Get the aggregate with the given id
-    agg = await mock_async_repository_get.get(id="NOT_FOUND")
+    agg = await mock_async_repository_get.get(id=uuid4())
     # Assert the returned id matches the given id
     assert agg is None
 
@@ -186,7 +188,7 @@ async def test_async_repo_get_seen_is_correct_when_not_found(
     """Verifies AsyncRepository get doesn't affect seen when agg not found."""
 
     # Perform get to setup testcases
-    await mock_async_repository_get.get(id="NOT_FOUND")
+    await mock_async_repository_get.get(id=uuid4())
     # Asserts AsyncRepository.get() adds the aggregate to the seen aggregates
     assert len(mock_async_repository_get.seen) == 0
 

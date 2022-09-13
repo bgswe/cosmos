@@ -1,55 +1,43 @@
 import asyncio
 import json
-import logging
 import os
-from typing import Any, Callable, Dict, List, Protocol
+from typing import Any, Dict, Protocol, Tuple
+
 from redis import Redis
 
 from microservices.domain import Consumer
-from microservices.events import (
-    STREAM_TO_EVENT_MAPPING,
-    ConsumerConfig,
-    Domain,
-    Event,
-    EventStream,
-)
+from microservices.events import STREAM_TO_EVENT_MAPPING, Event
 from microservices.message_bus import MessageBus
-from microservices.unit_of_work import AsyncUnitOfWork, AsyncUOWFactory
+from microservices.messages import (
+    Domain,
+    DomainConsumerConfig,
+    EventConsume,
+    EventPublish,
+)
+from microservices.unit_of_work import AsyncUnitOfWorkFactory
+from microservices.utils import get_logger
+
+logger = get_logger()
 
 
 class RedisClient(Protocol):
-    """Mirror for used methods from redis-py to easily mock a redis client."""
+    """Interface to abstract away dependency on current redis client."""
 
-    def xadd(name, fields, id='*', maxlen=None, approximate=True, nomkstream=False, minid=None, limit=None):
+    def xadd(
+        self,
+        name: Any,
+        fields: Any,
+        id: str = "*",
+        maxlen=None,
+        approximate=True,
+        nomkstream=False,
+        minid=None,
+        limit=None,
+    ):
         ...
 
-class RedisPublisher:
-    def __init__(self, redis: RedisClient):
-        self._redis = redis
-
-    async def publish(self, event: Event):
-        """..."""
-
-        values = event.dict()
-
-        try:
-            response = self._redis.xadd(
-                name=event.stream.value,
-                fields={"values": json.dumps({values})},
-            )
-
-            logging.debug(f"redis xadd command response: {response}")
-
-        except Exception as e:
-            logging.debug(f"redis xadd failed with exception type: {type(e)}")
-            logging.debug(f"-- event: f{values}")
-            logging.debug(f"-- exception: f{e}")
-
-            # TODO: What todo when message publish fails?
-
-
-class RedisConsumer:
-    pass
+    def xread(self, stream: Dict[str, str], count: int):
+        ...
 
 
 def get_redis_client() -> Redis:
@@ -64,89 +52,53 @@ def get_redis_client() -> Redis:
     )
 
 
-async def read_stream(
+def redis_publisher(client: RedisClient) -> EventPublish:
+    def publish(event: Event):
+        """EventPublish implementation for the redis stream stack."""
+
+        values = event.dict()
+
+        log = logger.bind(event=values)
+
+        try:
+            response = client.xadd(
+                name=event.stream.value,
+                fields={"values": json.dumps({values})},
+            )
+
+            log = log.bind(publish_response=response)
+            log.info("successfully published event to redis stream")
+
+        except Exception as e:
+            log = logger.bind(exception_type=type(e))
+            log.error("error attempting to publish event")
+
+            # TODO: What todo when message publish fails?
+
+    return publish
+
+
+async def consume(
     domain: Domain,
-    uow_factory: AsyncUOWFactory,
-    client: Redis,
-    consumer: Consumer,
-    target: Callable[[AsyncUnitOfWork, Dict[str, Any]], None],
-    sleep: int = 3,
+    config: DomainConsumerConfig,
+    uow_factory: AsyncUnitOfWorkFactory,
+    consumer_uow_factory: AsyncUnitOfWorkFactory[Consumer],
+    event_consume: EventConsume,
+    event_publish: EventPublish,
 ):
-    """..."""
+    """Consumes events defined in config from redis streams."""
 
-    stream = consumer.stream
-
-    target_name = target.__name__
-
-    logging.info(
-        f"now reading stream {stream} with target {target_name}"
-        f"with acked_id {consumer.acked_id}"
-    )
+    # Create an event handler dict from the DomainConsumerConfig
+    event_handlers = {}
+    for k, v in config.items():
+        event_handlers[k] = [consumer_config.handler for consumer_config in v]
 
     bus = MessageBus(
         domain=domain,
         uow_factory=uow_factory,
-        event_handlers={stream: [target]},
-        publisher=RedisPublisher(client=get_redis_client()),
+        event_handlers=event_handlers,
+        event_publish=EventPublish,
     )
-
-    while True:
-        try:
-            async with uow_factory.get_uow() as uow:
-                consumer = await uow.repository.get(id=consumer.id)
-
-                response = client.xread(
-                    {stream.value: consumer.acked_id},
-                    count=1,
-                )
-
-                if response:
-                    # We are only consuming a single stream
-                    redis_stream = response[0]
-                    _, messages = redis_stream
-
-                    for message_id, values in messages:
-                        logging.info(
-                            f"handling event from {stream}"
-                            f"-- id: {message_id}"
-                            f"-- target_name: {target_name}"
-                            f"-- type: {type(values)}"
-                            f"-- event values: {values}\n"
-                        )
-
-                        # Hydrates the mapped domain event view values from the stream
-                        hydrated_event = STREAM_TO_EVENT_MAPPING[stream](
-                            **json.loads(values["values"])
-                        )
-
-                        await bus.handle(message=hydrated_event)
-
-                        # Update latest read message.
-                        # What's the best way to capture this, long term?
-                        consumer.acked_id = message_id
-
-                        await uow.repository.update(consumer)
-
-                        logging.info(f"-- handled {stream} message w/ id {message_id}")
-
-                await asyncio.sleep(sleep)
-
-        except ConnectionError as e:
-            logging.error(f"issue w/ redis connection on xread: {e}")
-
-
-async def redis_consumer(
-    loop,
-    domain: Domain,
-    config: Dict[EventStream, List[ConsumerConfig]],
-    uow_factory: AsyncUOWFactory,
-):
-    """Consumes events defined in handlers from redis streams.
-
-    :param: handlers -> EventStreams of interest, and the associated handlers.
-    :param: subscriptions -> An implementation of the subs repo.
-    """
-    client = get_redis_client()
 
     # Create consumer sets representing consumer config, and current consumer state
     async with uow_factory.get_uow() as uow:
@@ -163,39 +115,106 @@ async def redis_consumer(
             ]
         )
 
+    # Create the new consumers if necessary
     async with uow_factory.get_uow() as uow:
         for c in created_consumers:
-            if not c.retroactive:
-                # TODO: Get the ~latest ID, and set the acked_id to that
-                # to prevent it from processing a ton of old messages
-                pass
-
             await uow.repository.add(c)
 
-    # Get all consumers from repo, and create a read_stream coroutine
+    # Get all consumers from repo
     async with uow_factory.get_uow() as uow:
         consumers = await uow.repository.get_list()
 
-    # Map config to Consumer, need to align consumer target
-    flattened_configs = [
-        config for config_list in config.values() for config in config_list
-    ]
-    ccs = [
-        (c, next(config for config in flattened_configs if c.name == config.name))
-        for c in consumers
-    ]
+    # Create an endlessly-looped event consumer for each individual consumer
+    loop = asyncio.new_event_loop()
 
     async_tasks = [
         loop.create_task(
-            read_stream(
-                domain=domain,
-                uow_factory=uow_factory,
-                client=client,
+            loop_event_consumer(
+                bus=bus,
+                uow_factory=consumer_uow_factory,
+                event_consume=event_consume,
                 consumer=consumer,
-                target=config.target,
             )
         )
-        for consumer, config in ccs
+        for consumer in consumers
     ]
 
     await asyncio.wait(async_tasks)
+
+
+async def loop_event_consumer(
+    bus: MessageBus,
+    uow_factory: AsyncUnitOfWorkFactory[Consumer],
+    event_consume: EventConsume,
+    consumer: Consumer,
+):
+    """Manages the inifinte looping of a given event consumer."""
+
+    while True:
+        try:
+            async with uow_factory.get_uow() as uow:
+                consumer = await uow.repository.get(id=consumer.id)
+
+                consumer_response = await event_consume(consumer=consumer)
+
+                if consumer_response:
+                    event, message_id = consumer_response
+
+                    await bus.handle(message=event)
+
+                    consumer.acked_id = message_id
+                    await uow.repository.update(consumer)
+
+            await asyncio.sleep(3)
+
+        except Exception as e:
+            # TODO: Logging on individual loop failure
+            logger.info(e)
+
+            pass
+
+
+async def redis_consumer(client: RedisClient) -> EventConsume:
+    """Closure to provide redis client wh/ allows EventConsume to be used as value."""
+
+    async def read_stream(consumer: Consumer) -> Tuple[Event, str] | None:
+        """Reads an event stream configured via the given consumer."""
+
+        stream = consumer.stream
+
+        try:
+            response = client.xread(
+                {stream.value: consumer.acked_id},
+                count=1,  # EVAL: Consider whether to do anything w/ count
+            )
+
+            if response:
+                # We are only consuming a single stream
+                redis_stream = response[0]
+                _, messages = redis_stream
+
+                for message_id, values in messages:
+                    logger.info(
+                        f"handling event from {stream}"
+                        f"-- id: {message_id}"
+                        f"-- type: {type(values)}"
+                        f"-- event values: {values}\n"
+                    )
+
+                    # Hydrates the mapped event type w/ values from the stream
+                    hydrated_event = STREAM_TO_EVENT_MAPPING[stream](
+                        **json.loads(values["values"])
+                    )
+
+                    # Update latest read message.
+                    # What's the best way to capture this, long term?
+                    return hydrated_event, message_id
+
+            return None
+
+        except ConnectionError as e:
+            logger.error(f"issue w/ redis connection on xread: {e}")
+
+            raise Exception()
+
+    return read_stream

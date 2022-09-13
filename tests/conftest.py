@@ -1,4 +1,6 @@
-from typing import Iterator
+from __future__ import annotations
+
+from typing import Iterable
 from uuid import UUID
 
 import pytest
@@ -6,7 +8,7 @@ import pytest
 from microservices.domain import Aggregate, create_entity
 from microservices.events import Event, EventStream
 from microservices.repository import AsyncRepository
-from microservices.unit_of_work import AsyncUnitOfWork, Collect
+from microservices.unit_of_work import Collect
 from microservices.utils import get_logger
 
 logger = get_logger()
@@ -22,8 +24,12 @@ class MockAggregate(Aggregate):
         super().__init__()  # must call super init
 
     @classmethod
-    def create(cls, id: UUID = None) -> Aggregate:
-        return create_entity(cls=cls, id=id)
+    def create(cls, id: UUID = None) -> MockAggregate:
+        new = create_entity(cls=cls, id=id)
+
+        assert type(new) == MockAggregate  # mypy assertion
+
+        return new
 
 
 @pytest.fixture
@@ -54,7 +60,7 @@ def mock_b_event() -> Event:
 class MockCEvent(Event):
     stream = EventStream.MockC
 
-    
+
 @pytest.fixture
 def mock_c_event() -> Event:
     return MockCEvent()
@@ -71,7 +77,7 @@ class MockAsyncRepository(AsyncRepository[MockAggregate]):
     pass
 
 
-def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
     """Simple test collect that returns the seen aggregates in a new list."""
 
     return [*repository.seen]
@@ -105,14 +111,16 @@ class MockAsyncUnitOfWork:
 
         return self._repository
 
-    def collect_events(self) -> Iterator[Event]:
+    def collect_events(self) -> Iterable[Event]:
         """Test implementation of collect_events."""
 
         return self._collect(repository=self._repository)
 
 
 @pytest.fixture
-def mock_async_unit_of_work(mock_async_repository: AsyncUnitOfWork) -> AsyncUnitOfWork:
+def mock_async_unit_of_work(
+    mock_async_repository: AsyncRepository,
+) -> MockAsyncUnitOfWork:
     return MockAsyncUnitOfWork(
         repository=mock_async_repository,
         collect=mock_collect,

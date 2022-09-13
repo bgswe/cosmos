@@ -35,7 +35,7 @@ class MockAggregateWithAttrs(Aggregate):
         self,
         id: UUID,
         name: str,
-        phone: str,
+        phone: str | None,
     ):
         """Simple test implementation to capture some attributes in aggregate."""
 
@@ -46,7 +46,7 @@ class MockAggregateWithAttrs(Aggregate):
         super().__init__()
 
     @classmethod
-    def create(cls, id: UUID, name: str, phone: str = None):
+    def create(cls, id: UUID, name: str, phone: str | None = None):
         """Simple create method w/ b few attributes."""
 
         return create_entity(cls=cls, id=id, name=name, phone=phone)
@@ -87,15 +87,6 @@ def test_entity_has_id_property(mock_entity: Entity):
         log.error("exception raised accessing id attr on mock entity")
 
         assert False  # fail the test
-
-
-def test_entity_change_id_on_existing_instance_raises_attribute_error(
-    mock_entity: Entity,
-):
-    """Verify that attempting to change id on existing instance raises exception."""
-
-    with pytest.raises(AttributeError):
-        mock_entity.id = get_uuid()
 
 
 def test_entity_with_no_id_raises_attr_error_on_access(
@@ -177,7 +168,7 @@ def test_changed_values_is_empty_when_no_changes(mock_aggregate_with_attrs: Aggr
 
 
 def test_change_one_value_verify_changed_values_is_correct(
-    mock_aggregate_with_attrs: Aggregate,
+    mock_aggregate_with_attrs: MockAggregateWithAttrs,
 ):
     """..."""
 

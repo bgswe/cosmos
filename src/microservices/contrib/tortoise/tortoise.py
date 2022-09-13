@@ -9,15 +9,14 @@ from tortoise.transactions import in_transaction
 
 from microservices.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
 from microservices.domain import Aggregate
-from microservices.repository import AsyncRepository, Repository
-from microservices.unit_of_work import EventCollector, simple_collector
+from microservices.repository import AsyncRepository
+from microservices.unit_of_work import Collect
 
 
-class SimpleEventCollector:
-    def collect(self, repository: Repository):
-        for aggregate in repository.seen:
-            while aggregate.has_events:
-                yield aggregate.get_events().pop(0)
+def simple_collect(repository: AsyncRepository):
+    for aggregate in repository.seen:
+        while aggregate.has_events:
+            yield aggregate.get_events().pop(0)
 
 
 async def tortoise_connect(
@@ -86,12 +85,12 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
         # TODO: Evaluate this being unused??
         transaction_context: TransactionContext = None,
         repository: AsyncRepository[T] = None,
-        collector: EventCollector = None,
+        collect: Collect = None,
     ):
-        if collector is not None:
-            self._collector = collector
+        if collect is not None:
+            self._collect = collect
         else:
-            self._collector = simple_collector
+            self._collect = simple_collect
 
         self._connection = connect()
         self._repo = repository
@@ -125,8 +124,6 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
         return res
 
     def collect_events(self):
-        if self._collector is None:
-            # TODO: Custom Exception
-            raise Exception
+        """..."""
 
-        return self._collector(repository=self._repo)
+        return self._collect(repository=self._repo)
