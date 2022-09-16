@@ -1,8 +1,8 @@
 from typing import Generic, List, TypeVar
 
 from asyncpg import connect
-from tortoise import Tortoise
-from tortoise.transactions import in_transaction
+from tortoise import Tortoise  # type: ignore
+from tortoise.transactions import in_transaction  # type: ignore
 
 from microservices.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
 from microservices.domain import Aggregate
@@ -23,9 +23,9 @@ def simple_collect(repository: AsyncRepository):
 
 
 async def tortoise_connect(
+    db_url: str,
+    models: List[str],
     generate: bool = False,
-    db_url: str = None,
-    models: List[str] = None,
 ):
     """Small connection utilitity for the tortoise-orm library."""
 
@@ -43,7 +43,7 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
 
     def __init__(
         self,
-        repository: AsyncRepository[T] = None,
+        repository: AsyncRepository[T],
         collect: Collect = None,
     ):
         if collect is not None:
@@ -51,8 +51,16 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
         else:
             self._collect = simple_collect
 
-        self._connection = connect()
         self._repository = repository
+
+    async def connect(self):
+        """Allows connection to be set to async return value.
+
+        This initialization cannot be done in __init__ as connect is cannot be async.
+        This method must be called after creating a new instance of TortoiseUOW.
+        """
+
+        self._connection = await connect()
 
     async def __aenter__(self):
         """Enter method for use as Async Context Manager.

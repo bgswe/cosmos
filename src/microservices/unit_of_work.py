@@ -72,10 +72,17 @@ class AsyncUnitOfWorkFactory(Generic[T]):
         self._repo_cls = repository_cls
         self._collect = collect
 
-    def get_uow(self) -> AsyncUnitOfWork:
+    async def get_uow(self) -> AsyncUnitOfWork:
         """Create and return a new uow instance."""
 
-        return self._uow_cls(
+        uow = self._uow_cls(
             repository=self._repo_cls(),
             collect=self._collect,
         )
+
+        connect = getattr(uow, "connect", None)
+
+        if callable(connect):
+            await uow.connect()  # type: ignore
+
+        return uow
