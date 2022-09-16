@@ -1,9 +1,12 @@
 aiohttp
 asyncpg
-asyncpg-stubs
 pytest
 pytest-asyncio
 pydantic
 pre-commit
 structlog
 mypy
+tortoise-orm
+# mypy dependencies
+asyncpg-stubs
+types-redis
