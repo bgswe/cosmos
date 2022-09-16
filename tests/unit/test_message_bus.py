@@ -1,21 +1,27 @@
 from __future__ import annotations
-from curses import nonl
 
-from typing import Callable, Iterator, List, Tuple
+from typing import Iterable, List, Tuple
 
 import pytest
 
+from microservices.domain import Domain
 from microservices.events import Event, EventStream
 from microservices.message_bus import EventHandler, MessageBus
 from microservices.repository import AsyncRepository
 from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
 from microservices.utils import get_logger
-from tests.conftest import MockAEvent, MockAsyncRepository, MockAsyncUnitOfWork, MockBEvent, mock_collect
+from tests.conftest import (
+    MockAEvent,
+    MockAsyncRepository,
+    MockAsyncUnitOfWork,
+    MockBEvent,
+    mock_collect,
+)
 
 logger = get_logger()
 
 
-class MockPublisher:
+class MockPublish:
     """Simple test implementation of a publisher."""
 
     def publish(self, event: Event):
@@ -27,8 +33,8 @@ class MockPublisher:
 @pytest.fixture
 def empty_message_bus() -> MessageBus:
     return MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -89,7 +95,7 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
 
     MessageBus(
         domain="test",
-        publisher=MockPublisher,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -116,8 +122,8 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -142,8 +148,8 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -167,8 +173,8 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
     invocation_flag_b, handler_b = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -201,8 +207,8 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_handlers[event] = [handler[1] for handler in handlers]
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -227,7 +233,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
 def mock_collect_spoofed_event(mock_b_event: Event) -> Collect:
     first = True
 
-    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+    def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
         """Simple test collect that returns the seen aggregates in a new list."""
 
         # NOTE: This is a relatively easy way to spoof a handler raising an event
@@ -240,9 +246,8 @@ def mock_collect_spoofed_event(mock_b_event: Event) -> Collect:
             return [mock_b_event]
 
         return [*repository.seen]
-    
-    return mock_collect
 
+    return mock_collect
 
 
 async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
@@ -255,8 +260,8 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -282,7 +287,7 @@ def mock_collect_spoofed_event_sequence(
 ) -> Collect:
     count = 0
 
-    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+    def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
         """Simple test collect that returns the seen aggregates in a new list."""
 
         # NOTE: This is a relatively easy way to spoof a handler raising an event
@@ -299,7 +304,7 @@ def mock_collect_spoofed_event_sequence(
                 return [mock_c_event]  # simulate MockC raised in MockB handler
 
         return [*repository.seen]
-    
+
     return mock_collect
 
 
@@ -314,8 +319,8 @@ async def test_message_bus_handle_calls_correct_event_sequence(
     mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -329,7 +334,8 @@ async def test_message_bus_handle_calls_correct_event_sequence(
         },
     )
 
-    seq = await bus.handle(mock_a_event)
+    seq = await bus.handle(mock_a_event)  # noqa
+    # TODO: Finish this test to ensure that events are properly being ordered
 
     assert mock_b_handler_invoked.invoked
     assert mock_c_handler_invoked.invoked
@@ -339,14 +345,9 @@ async def test_message_bus_handle_calls_correct_event_sequence(
 def mock_collect_spoofed_event_sequence_many() -> Tuple[List[Event], Collect]:
     count = 0
 
-    events = [
-        MockBEvent(),
-        MockAEvent(),
-        MockBEvent(),
-        MockAEvent()
-    ]
+    events = [MockBEvent(), MockAEvent(), MockBEvent(), MockAEvent()]
 
-    def mock_collect(repository: AsyncRepository) -> Iterator[Event]:
+    def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
         """Simple test collect that returns the seen aggregates in a new list."""
 
         # NOTE: This is a relatively easy way to spoof a handler raising an event
@@ -369,7 +370,7 @@ def mock_collect_spoofed_event_sequence_many() -> Tuple[List[Event], Collect]:
                 return [events[3]]  # simulate MockC raised in MockB handler
 
         return [*repository.seen]
-    
+
     return events, mock_collect
 
 
@@ -387,8 +388,8 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
     mock_events, mock_collect = mock_collect_spoofed_event_sequence_many
 
     bus = MessageBus(
-        domain="test",
-        publisher=MockPublisher,
+        domain=Domain.Test,
+        event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,

@@ -24,3 +24,8 @@ jobs:
 
       - name: Run project tests
         run: pytest
+
+      - name: Run static typechecker
+        run: |
+          cd src
+          mypy .

@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from typing import Any, Iterator, Protocol, Type, TypeVar, runtime_checkable
+from typing import (
+    Any,
+    Generic,
+    Iterable,
+    Iterator,
+    Protocol,
+    Type,
+    TypeVar,
+    runtime_checkable,
+)
 
 from microservices.domain import Aggregate
 from microservices.events import Event
@@ -12,7 +21,7 @@ T = TypeVar("T", bound=Aggregate)
 class Collect(Protocol):
     """Callback protocol to provide an abstracted collect method."""
 
-    def __call__(repository: AsyncRepository) -> Iterator[Event]:
+    def __call__(self, repository: AsyncRepository) -> Iterable[Event]:
         """An interface to collect events from a repository"""
 
         ...
@@ -31,29 +40,30 @@ class AsyncUnitOfWork(Protocol[T]):
     def __init__(self, repository: AsyncRepository, collect: Collect):
         ...
 
-    def repository(self, repository) -> AsyncRepository:
+    @property
+    def repository(self) -> AsyncRepository:
         ...
 
     def collect_events(self) -> Iterator[Event]:
         ...
 
-    async def __aenter__(self) -> AsyncUnitOfWork:
+    async def __aenter__(self) -> AsyncUnitOfWork[T]:
         ...
 
     async def __aexit__(self, *args):
         ...
 
-    async def transaction() -> Any:
+    async def transaction(self) -> Any:
         ...
 
 
-class AsyncUnitOfWorkFactory:
+class AsyncUnitOfWorkFactory(Generic[T]):
     """Factory implementation to create an async uow, from a uow cls and repo cls."""
 
     def __init__(
         self,
-        uow_cls: Type[AsyncUnitOfWork],
-        repository_cls: Type[AsyncRepository],
+        uow_cls: Type[AsyncUnitOfWork[T]],
+        repository_cls: Type[AsyncRepository[T]],
         collect: Collect,
     ):
         """Takes a uow class and repo class, and saves for use in uow creation."""
@@ -62,10 +72,17 @@ class AsyncUnitOfWorkFactory:
         self._repo_cls = repository_cls
         self._collect = collect
 
-    def get_uow(self) -> AsyncUnitOfWork:
+    async def get_uow(self) -> AsyncUnitOfWork:
         """Create and return a new uow instance."""
 
-        return self._uow_cls(
+        uow = self._uow_cls(
             repository=self._repo_cls(),
             collect=self._collect,
         )
+
+        connect = getattr(uow, "connect", None)
+
+        if callable(connect):
+            await uow.connect()  # type: ignore
+
+        return uow

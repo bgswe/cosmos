@@ -1,4 +1,5 @@
 from typing import List
+from uuid import UUID
 
 from tortoise import fields
 
@@ -24,7 +25,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
 
         return [
             Consumer(
-                id=c.id,
+                id=UUID(c.id),
                 stream=c.stream,
                 name=c.name,
                 acked_id=c.acked_id,
@@ -33,11 +34,11 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
             for c in consumer_orm_list
         ]
 
-    async def _get(self, id: str) -> Consumer:
+    async def _get(self, id: UUID) -> Consumer:
         consumer_orm = await ConsumerORM.get(id=id)
 
         return Consumer(
-            id=consumer_orm.id,
+            id=UUID(consumer_orm.id),
             stream=consumer_orm.stream,
             name=consumer_orm.name,
             acked_id=consumer_orm.acked_id,

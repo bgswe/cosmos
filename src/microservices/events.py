@@ -4,8 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from microservices.messages import Event, EventStream
-
+from microservices.domain import Event, EventStream
 
 """Inspection Events."""
 
