@@ -5,15 +5,15 @@ from typing import Any, Dict, Protocol, Tuple
 
 from redis import Redis
 
-from microservices.domain import Consumer
-from microservices.events import STREAM_TO_EVENT_MAPPING, Event
-from microservices.message_bus import MessageBus
-from microservices.messages import (
+from microservices.domain import (
+    Consumer,
     Domain,
     DomainConsumerConfig,
     EventConsume,
     EventPublish,
 )
+from microservices.events import STREAM_TO_EVENT_MAPPING, Event
+from microservices.message_bus import MessageBus
 from microservices.unit_of_work import AsyncUnitOfWorkFactory
 from microservices.utils import get_logger
 
@@ -101,7 +101,7 @@ async def consume(
     )
 
     # Create consumer sets representing consumer config, and current consumer state
-    async with uow_factory.get_uow() as uow:
+    async with await uow_factory.get_uow() as uow:
         current_consumer_names = {c.name for c in await uow.repository.get_list()}
 
     # Represent the new consumers we must now create
@@ -116,12 +116,12 @@ async def consume(
         )
 
     # Create the new consumers if necessary
-    async with uow_factory.get_uow() as uow:
+    async with await uow_factory.get_uow() as uow:
         for c in created_consumers:
             await uow.repository.add(c)
 
     # Get all consumers from repo
-    async with uow_factory.get_uow() as uow:
+    async with await uow_factory.get_uow() as uow:
         consumers = await uow.repository.get_list()
 
     # Create an endlessly-looped event consumer for each individual consumer
@@ -152,7 +152,7 @@ async def loop_event_consumer(
 
     while True:
         try:
-            async with uow_factory.get_uow() as uow:
+            async with await uow_factory.get_uow() as uow:
                 consumer = await uow.repository.get(id=consumer.id)
 
                 consumer_response = await event_consume(consumer=consumer)

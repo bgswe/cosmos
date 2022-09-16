@@ -18,7 +18,7 @@ class AsyncUnitOfWorkPostgres(ABC):
             PGPASSWORD
         """
 
-        if not self._connection:
+        if not self._connection:  # type: ignore
             self._connection = await connect()
 
         return self._connection.transaction()

@@ -260,7 +260,7 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain="test",
+        domain=Domain.Test,
         event_publish=MockPublish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,

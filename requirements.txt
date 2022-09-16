@@ -1,5 +1,6 @@
 aiohttp
 asyncpg
+asyncpg-stubs
 pytest
 pytest-asyncio
 pydantic

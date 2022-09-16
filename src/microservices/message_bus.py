@@ -148,7 +148,7 @@ class MessageBus:
         for handler in self._event_handlers.get(event.stream, []):
             try:
                 # Create new UnitOfWork for use in handler
-                uow = self._uow_factory.get_uow()
+                uow = await self._uow_factory.get_uow()
                 await handler(uow=uow, event=event)
                 # Append all raised events to the message queue
                 self._queue[seed_id].extend(uow.collect_events())
@@ -180,7 +180,7 @@ class MessageBus:
             # Commands may only have one configured handler
             handler = self._command_handlers[type(command)]
             # Create new UnitOfWork and pass to the command handler
-            uow = self._uow_factory.get_uow()
+            uow = await self._uow_factory.get_uow()
             await handler(uow=uow, command=command)
             # Append all raised events to the message queue
             self._queue[seed_id].extend(uow.collect_events())

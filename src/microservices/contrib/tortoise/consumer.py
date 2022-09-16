@@ -25,7 +25,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
 
         return [
             Consumer(
-                id=c.id,
+                id=UUID(c.id),
                 stream=c.stream,
                 name=c.name,
                 acked_id=c.acked_id,
@@ -38,7 +38,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
         consumer_orm = await ConsumerORM.get(id=id)
 
         return Consumer(
-            id=consumer_orm.id,
+            id=UUID(consumer_orm.id),
             stream=consumer_orm.stream,
             name=consumer_orm.name,
             acked_id=consumer_orm.acked_id,
