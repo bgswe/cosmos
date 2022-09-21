@@ -99,6 +99,7 @@ class Aggregate(Entity, ABC):
 
 def create_entity(
     cls: Type[Entity],
+    has_uuid_pk: bool = True,
     **init_kwargs,
 ) -> Entity:
     """Encapsulates housekeeping tasks of entity creation.
@@ -110,7 +111,7 @@ def create_entity(
     """
 
     # Auto-assign UUID if not provided by entity creator
-    if init_kwargs.get("id", None) is None:
+    if has_uuid_pk and init_kwargs.get("id", None) is None:
         init_kwargs = {**init_kwargs, "id": get_uuid()}
 
     # EVAL: What else could go here?
