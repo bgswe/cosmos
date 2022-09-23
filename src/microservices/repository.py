@@ -24,13 +24,13 @@ class AsyncRepository(Generic[T]):
     def seen(self) -> Set[T]:
         return self._seen
 
-    async def get(self, id: UUID) -> T:
+    async def get(self, pk: UUID) -> T:
         """Call subclass _get implementation and note the aggregate as seen.
 
         :param: id -> the UUID of Aggregate to get
         """
 
-        agg = await self._get(id=id)
+        agg = await self._get(pk=pk)
 
         if agg:
             self._seen.add(agg)

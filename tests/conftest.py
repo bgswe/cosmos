@@ -24,15 +24,15 @@ def mock_uuid() -> UUID:
 class MockAggregate(Aggregate):
     """Simple test aggregate implementation."""
 
-    def __init__(self, id: UUID):
+    def __init__(self, pk: UUID):
         """Most simple implementation of init."""
 
-        self._id = id  # must set _id attr
+        self._pk = pk  # must set _id attr
         super().__init__()  # must call super init
 
     @classmethod
-    def create(cls, id: UUID = None) -> MockAggregate:
-        new = create_entity(cls=cls, id=id)
+    def create(cls, pk: UUID = None) -> MockAggregate:
+        new = create_entity(cls=cls, pk=pk)
 
         assert type(new) == MockAggregate  # mypy assertion
 

@@ -16,7 +16,7 @@ def test_consumer_init_calls_super_init():
     """Verifies artifacts created in super init exists on consumer."""
 
     c = Consumer(
-        id=get_uuid(),
+        pk=get_uuid(),
         stream=EventStream.MockA,
         name="SomeConsumer",
         acked_id="0",

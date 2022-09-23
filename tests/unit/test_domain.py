@@ -8,23 +8,23 @@ from tests.conftest import MockAggregate
 
 
 class MockEntity(Entity):
-    def __init__(self, id: UUID) -> None:
-        self._id = id
+    def __init__(self, pk: UUID) -> None:
+        self._pk = pk
 
 
 @pytest.fixture
 def mock_entity() -> MockEntity:
-    return MockEntity(id=get_uuid())
+    return MockEntity(pk=get_uuid())
 
 
 class MockEntityNoID(Entity):
-    def __init__(self, id: UUID) -> None:
+    def __init__(self, pk: UUID) -> None:
         pass
 
 
 @pytest.fixture
 def mock_entity_no_id() -> MockEntityNoID:
-    return MockEntityNoID(id=get_uuid())
+    return MockEntityNoID(pk=get_uuid())
 
 
 class MockAggregateWithAttrs(Aggregate):
@@ -32,23 +32,23 @@ class MockAggregateWithAttrs(Aggregate):
 
     def __init__(
         self,
-        id: UUID,
+        pk: UUID,
         name: str,
         phone: str | None,
     ):
         """Simple test implementation to capture some attributes in aggregate."""
 
-        self._id = id
+        self._pk = pk
         self._name = name
         self._phone = phone
 
         super().__init__()
 
     @classmethod
-    def create(cls, id: UUID, name: str, phone: str | None = None):
+    def create(cls, pk: UUID, name: str, phone: str | None = None):
         """Simple create method w/ b few attributes."""
 
-        return create_entity(cls=cls, id=id, name=name, phone=phone)
+        return create_entity(cls=cls, pk=pk, name=name, phone=phone)
 
     @property
     def name(self) -> str:
@@ -71,14 +71,14 @@ class MockAggregateWithAttrs(Aggregate):
 def mock_aggregate_with_attrs() -> MockAggregateWithAttrs:
     """Simple fixture to return a new MockAggregateWithAttrs instance."""
 
-    return MockAggregateWithAttrs.create(id=get_uuid(), name="Some Name")
+    return MockAggregateWithAttrs.create(pk=get_uuid(), name="Some Name")
 
 
 def test_entity_has_id_property(mock_entity: Entity):
     """Verify that setting the _id attr allows id attr to be accessed."""
 
     try:
-        mock_entity.id
+        mock_entity.pk
     except Exception as e:
         logger = get_logger()
 
@@ -109,10 +109,10 @@ def test_aggregate_has_empty_events_list_after_init():
 def test_aggregate_uses_given_id_if_given():
     """Verifies that the id is used and not discarded or overwritten."""
 
-    mock_id = get_uuid()
-    agg = MockAggregate.create(id=mock_id)
+    mock_pk = get_uuid()
+    agg = MockAggregate.create(pk=mock_pk)
 
-    assert agg.id.hex == mock_id.hex
+    assert agg.pk.hex == mock_pk.hex
 
 
 def test_aggregate_new_event_adds_to_events_list(
@@ -135,7 +135,7 @@ def test_aggregate_new_event_adds_to_events_list(
 def test_initialized_values_are_correct_immediately_after_init():
     """Verifies captured values on init are correct."""
 
-    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
+    attrs = {"pk": get_uuid(), "name": "Some Name", "phone": None}
 
     agg = MockAggregateWithAttrs.create(**attrs)
 
@@ -145,7 +145,7 @@ def test_initialized_values_are_correct_immediately_after_init():
 def test_initialized_values_are_correct_after_changes():
     """Verifies init values are still correct after subsequent attr changes."""
 
-    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
+    attrs = {"pk": get_uuid(), "name": "Some Name", "phone": None}
 
     agg = MockAggregateWithAttrs.create(**attrs)
 
@@ -178,18 +178,18 @@ def test_change_one_value_verify_changed_values_is_correct(
 
 
 def test_create_entity_uses_id_when_given():
-    id = get_uuid()
-    entity = create_entity(MockEntity, id=id)
+    pk = get_uuid()
+    entity = create_entity(MockEntity, pk=pk)
 
-    assert entity.id is not None
-    assert entity.id.hex == id.hex
+    assert entity.pk is not None
+    assert entity.pk.hex == pk.hex
 
 
 def test_create_entity_generates_id_when_not_given():
     entity = create_entity(MockEntity)
 
-    assert entity.id is not None
-    assert type(entity.id) == UUID
+    assert entity.pk is not None
+    assert type(entity.pk) == UUID
 
 
 def test_create_entity_returns_correct_instance_type():

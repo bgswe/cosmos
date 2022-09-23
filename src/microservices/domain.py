@@ -10,19 +10,22 @@ from pydantic import BaseModel, Field
 
 from microservices.utils import get_uuid
 
+PK_TYPES = UUID | str | int
+PK = PK_TYPES | Tuple[PK_TYPES]
+
 
 class Entity(ABC):
     """Base Entity of our domain model."""
 
-    _id: UUID  # all entities will have id
+    _pk: PK  # all entities will have a primary key
 
     @property
-    def id(self) -> UUID:
-        """Simple public getter for id."""
+    def pk(self) -> PK:
+        """Simple public getter for the primary key."""
 
-        return self._id
+        return self._pk
 
-    @id.setter  # type: ignore
+    @pk.setter  # type: ignore
     def raise_exception(self):
         """Raise exception to prevent id from being changed during lifetime."""
 
@@ -111,8 +114,8 @@ def create_entity(
     """
 
     # Auto-assign UUID if not provided by entity creator
-    if has_uuid_pk and init_kwargs.get("id", None) is None:
-        init_kwargs = {**init_kwargs, "id": get_uuid()}
+    if has_uuid_pk and init_kwargs.get("pk", None) is None:
+        init_kwargs = {**init_kwargs, "pk": get_uuid()}
 
     # EVAL: What else could go here?
 
@@ -124,13 +127,13 @@ class Consumer(Aggregate):
 
     def __init__(
         self,
-        id: UUID,
+        pk: UUID,
         stream: EventStream,
         name: str,
         acked_id: str,
         retroactive: bool,
     ):
-        self._id = id
+        self._pk = pk
         self._stream = stream
         self._name = name
         self._acked_id = acked_id
@@ -143,14 +146,14 @@ class Consumer(Aggregate):
         cls,
         stream: EventStream,
         name: str,
-        id: UUID = None,
+        pk: UUID = None,
         retroactive: bool = True,
     ) -> Consumer:
         """Standard create method for a Consumer aggregate."""
 
         new_consumer = create_entity(
             cls=cls,
-            id=id,
+            pk=pk,
             stream=stream,
             name=name,
             acked_id="0",  # deafult 'zero-value' of new consumer

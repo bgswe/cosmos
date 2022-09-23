@@ -15,15 +15,15 @@ logger = get_logger()
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get' method."""
 
-    async def _get(self, id: UUID) -> MockAggregate:
+    async def _get(self, pk: UUID) -> MockAggregate:
         """Simulates returning an aggregate or None if 'Not Found'."""
 
-        if id == UUID(
+        if pk == UUID(
             "11111111-1111-1111-1111-111111111111"
         ):  # pass this str as id to simulate Not Found
             return None
 
-        return MockAggregate(id=id)  # otherwise, simulate a found aggregate
+        return MockAggregate(pk=pk)  # otherwise, simulate a found aggregate
 
 
 @pytest.fixture
@@ -149,9 +149,9 @@ async def test_async_repo_get_returns_correct_aggregate(
     """Verifies AsyncRepository get returns expected MockAggregate."""
 
     # Get the aggregate with the given id
-    agg = await mock_async_repository_get.get(id=mock_aggregate.id)
+    agg = await mock_async_repository_get.get(pk=mock_aggregate.pk)
     # Assert the returned id matches the given id
-    assert agg.id == mock_aggregate.id
+    assert agg.pk == mock_aggregate.pk
 
 
 async def test_async_repo_get_returns_none_when_not_found(
@@ -162,7 +162,7 @@ async def test_async_repo_get_returns_none_when_not_found(
     """Verifies AsyncRepository get returns 'None' when agg is not found."""
 
     # Get the aggregate with the given id
-    agg = await mock_async_repository_get.get(id=mock_uuid)
+    agg = await mock_async_repository_get.get(pk=mock_uuid)
     # Assert the returned id matches the given id
     assert agg is None
 
@@ -175,13 +175,13 @@ async def test_async_repo_get_seen_is_correct(
 
     # Perform get to setup testcases
     agg = await mock_async_repository_get.get(
-        id=mock_aggregate.id
+        pk=mock_aggregate.pk
     )  # id is optional on mock repo
     # Asserts AsyncRepository.get() adds the aggregate to the seen aggregates
     assert len(mock_async_repository_get.seen) == 1
     # Access the one aggregate, and confirm it's this one
     seen_agg = mock_async_repository_get.seen.pop()
-    assert seen_agg.id == agg.id
+    assert seen_agg.pk == agg.pk
 
 
 async def test_async_repo_get_seen_is_correct_when_not_found(
@@ -192,7 +192,7 @@ async def test_async_repo_get_seen_is_correct_when_not_found(
     """Verifies AsyncRepository get doesn't affect seen when agg not found."""
 
     # Perform get to setup testcases
-    await mock_async_repository_get.get(id=mock_uuid)
+    await mock_async_repository_get.get(pk=mock_uuid)
     # Asserts AsyncRepository.get() adds the aggregate to the seen aggregates
     assert len(mock_async_repository_get.seen) == 0
 
@@ -231,9 +231,9 @@ async def test_async_repo_get_list_seen_aggregates_are_correct(
     # Invoke get_list to setup testcase
     aggregate_list = await mock_async_repository_get_list.get_list()
     # Test each aggregate in list has been seen
-    returned_agg_mapping = {agg.id: True for agg in aggregate_list}
+    returned_agg_mapping = {agg.pk: True for agg in aggregate_list}
     for agg in mock_async_repository_get_list.seen:
-        assert returned_agg_mapping[agg.id]
+        assert returned_agg_mapping[agg.pk]
 
 
 async def test_mock_async_repo_add_simple_call(
@@ -266,7 +266,7 @@ async def test_mock_async_repo_add_seen_is_correct(
     await mock_async_repository_add.add(mock_aggregate)
     # Test that only one agg has been seen, and it is the aggregate added
     assert len(mock_async_repository_add.seen) == 1
-    assert mock_aggregate.id == mock_async_repository_add.seen.pop().id
+    assert mock_aggregate.pk == mock_async_repository_add.seen.pop().pk
 
 
 async def test_mock_async_repo_update(
@@ -300,7 +300,7 @@ async def test_mock_async_repo_update_seen_is_correct(
     # Test that seen has one agg in it
     assert len(mock_async_repository_update.seen) == 1
     # Ensure it matches the mock agg
-    assert mock_aggregate.id == mock_async_repository_update.seen.pop().id
+    assert mock_aggregate.pk == mock_async_repository_update.seen.pop().pk
 
 
 async def test_mock_async_repo_get_list_seen_is_correct(
@@ -314,7 +314,7 @@ async def test_mock_async_repo_get_list_seen_is_correct(
     # Test that seen has one agg in it
     assert len(mock_async_repository_update.seen) == 1
     # Ensure it matches the mock agg
-    assert mock_aggregate.id == mock_async_repository_update.seen.pop().id
+    assert mock_aggregate.pk == mock_async_repository_update.seen.pop().pk
 
 
 async def test_mock_async_repo_get_returns_correct_aggregate(
@@ -324,6 +324,6 @@ async def test_mock_async_repo_get_returns_correct_aggregate(
     """Verifies AsyncRepository get returns expected MockAggregate."""
 
     # Get the aggregate with the given id
-    agg = await mock_async_repository_get.get(id=mock_aggregate.id)
+    agg = await mock_async_repository_get.get(pk=mock_aggregate.pk)
     # Assert the returned id matches the given id
-    assert agg.id == mock_aggregate.id
+    assert agg.pk == mock_aggregate.pk
