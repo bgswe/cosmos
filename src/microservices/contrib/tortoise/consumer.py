@@ -4,7 +4,7 @@ from uuid import UUID
 from tortoise import fields
 
 from microservices.contrib.tortoise.models import AbstractBaseModel
-from microservices.domain import Consumer
+from microservices.domain import PK, Consumer
 from microservices.events import EventStream
 from microservices.repository import AsyncRepository
 
@@ -25,7 +25,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
 
         return [
             Consumer(
-                id=UUID(c.id),
+                pk=UUID(c.pk),
                 stream=c.stream,
                 name=c.name,
                 acked_id=c.acked_id,
@@ -34,11 +34,11 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
             for c in consumer_orm_list
         ]
 
-    async def _get(self, id: UUID) -> Consumer:
-        consumer_orm = await ConsumerORM.get(id=id)
+    async def _get(self, pk: PK) -> Consumer:
+        consumer_orm = await ConsumerORM.get(pk=pk)
 
         return Consumer(
-            id=UUID(consumer_orm.id),
+            pk=UUID(consumer_orm.pk),
             stream=consumer_orm.stream,
             name=consumer_orm.name,
             acked_id=consumer_orm.acked_id,
@@ -47,7 +47,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
 
     async def _add(self, consumer: Consumer):
         await ConsumerORM.create(
-            id=consumer.id,
+            pk=consumer.pk,
             stream=consumer.stream,
             name=consumer.name,
             acked_id=consumer.acked_id,
@@ -55,7 +55,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
         )
 
     async def _update(self, consumer: Consumer):
-        consumer_orm = await ConsumerORM.get(id=consumer.id)
+        consumer_orm = await ConsumerORM.get(pk=consumer.pk)
 
         # TODO: Only updating acked_id for now
         consumer_orm.acked_id = consumer.acked_id

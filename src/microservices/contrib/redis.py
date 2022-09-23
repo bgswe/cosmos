@@ -153,7 +153,7 @@ async def loop_event_consumer(
     while True:
         try:
             async with await uow_factory.get_uow() as uow:
-                consumer = await uow.repository.get(id=consumer.id)
+                consumer = await uow.repository.get(pk=consumer.pk)
 
                 consumer_response = await event_consume(consumer=consumer)
 
