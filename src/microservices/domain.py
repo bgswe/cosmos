@@ -10,8 +10,7 @@ from pydantic import BaseModel, Field
 
 from microservices.utils import get_uuid
 
-PK_TYPES = UUID | str | int
-PK = PK_TYPES | Tuple[PK_TYPES]
+PK = UUID | str | int | Tuple[UUID | str | int]
 
 
 class Entity(ABC):
@@ -113,7 +112,7 @@ def create_entity(
     if not supplied via __init__ kwargs.
     """
 
-    # Auto-assign UUID if not provided by entity creator
+    # Auto-assign UUID if PK not provided by entity creator
     if has_uuid_pk and init_kwargs.get("pk", None) is None:
         init_kwargs = {**init_kwargs, "pk": get_uuid()}
 
@@ -127,7 +126,7 @@ class Consumer(Aggregate):
 
     def __init__(
         self,
-        pk: UUID,
+        pk: PK,
         stream: EventStream,
         name: str,
         acked_id: str,
@@ -146,7 +145,7 @@ class Consumer(Aggregate):
         cls,
         stream: EventStream,
         name: str,
-        pk: UUID = None,
+        pk: PK = None,
         retroactive: bool = True,
     ) -> Consumer:
         """Standard create method for a Consumer aggregate."""
