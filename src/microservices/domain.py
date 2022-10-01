@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from microservices.utils import get_uuid
 
-PK = UUID | str | int | Tuple[UUID | str | int]
+PK = UUID | Enum | str | int | Tuple[UUID | str | int]
 
 
 class Entity(ABC):

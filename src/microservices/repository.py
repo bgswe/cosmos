@@ -1,4 +1,4 @@
-from typing import Generic, List, Set, TypeVar
+from typing import Generic, List, TypeVar
 
 from microservices.domain import PK, Aggregate
 
@@ -17,11 +17,16 @@ class AsyncRepository(Generic[T]):
     def __init__(self):
         """Initializes set to track what aggregates have been seen."""
 
-        self._seen: Set[T] = set()
+        self._seen: List[T] = []
 
     @property
-    def seen(self) -> Set[T]:
+    def seen(self) -> List[T]:
         return self._seen
+
+    def _mark_seen(self, aggregate: T):
+        """Utility to add a given aggregate to the set of seen aggregates."""
+
+        self._seen.append(aggregate)
 
     async def get(self, pk: PK) -> T:
         """Call subclass _get implementation and note the aggregate as seen.
@@ -32,7 +37,7 @@ class AsyncRepository(Generic[T]):
         agg = await self._get(pk=pk)
 
         if agg:
-            self._seen.add(agg)
+            self._mark_seen(aggreagte=agg)
 
         return agg
 
@@ -48,7 +53,8 @@ class AsyncRepository(Generic[T]):
         # EVAL: Possible performance implication of checking self._seen
         # for large lists here? Likely unnecessary micro optimization at this time
         if agg_list:
-            self._seen.update(agg_list)
+            for agg in agg_list:
+                self._mark_seen(aggregate=agg)
 
         return agg_list
 
@@ -57,9 +63,10 @@ class AsyncRepository(Generic[T]):
 
         :param: aggregate -> an aggregate instance to be newly persisted
         """
+
         await self._add(aggregate)
 
-        self._seen.add(aggregate)
+        self._mark_seen(aggregate=aggregate)
 
     async def update(self, aggregate: T):
         """Call subclass _update implementation and note the aggregate as seen.
@@ -69,7 +76,7 @@ class AsyncRepository(Generic[T]):
 
         await self._update(aggregate)
 
-        self._seen.add(aggregate)
+        self._mark_seen(aggregate=aggregate)
 
     async def _get(self, pk: PK) -> T:
         """Required for repository implementation to get an instance type 'T'."""
