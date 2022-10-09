@@ -18,8 +18,10 @@ class PointOfContact(BaseModel):
     phone: str | None
 
 
-class AccountRegistered(BaseModel):
+class AccountRegistered(Event):
     """Signifies the creation of a new account in the system."""
+
+    stream: ClassVar[EventStream] = EventStream.AccountRegistered
 
     business_name: str
     phone: str
@@ -34,8 +36,10 @@ class DefaultRoles(Enum):
     ACCOUNT_SUPERREADER = "account-superreader"
 
 
-class AccountUserRegistered(BaseModel):
+class AccountUserRegistered(Event):
     """Signifies the creation of a new account user in the system."""
+
+    stream: ClassVar[EventStream] = EventStream.AccountUserRegistered
 
     id: UUID
     email: str

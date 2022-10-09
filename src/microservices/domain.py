@@ -202,7 +202,7 @@ class Consumer(Aggregate):
 class Domain(Enum):
     """The registered domains of the system."""
 
-    AccountManagement = "account_management"
+    Registration = "registration"
     Inspection = "inspection"
 
     # NOTE: Just for test
@@ -211,6 +211,9 @@ class Domain(Enum):
 
 class EventStream(Enum):
     """The registered event streams in the system."""
+
+    AccountRegistered = f"{Domain.Registration.value}.account_registered"
+    AccountUserRegistered = f"{Domain.Registration.value}.account_user_registered"
 
     InspectionNew = f"{Domain.Inspection.value}.new"
     InspectionUpdated = f"{Domain.Inspection.value}.updated"
