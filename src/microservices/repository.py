@@ -37,7 +37,7 @@ class AsyncRepository(Generic[T]):
         agg = await self._get(pk=pk)
 
         if agg:
-            self._mark_seen(aggreagte=agg)
+            self._mark_seen(aggregate=agg)
 
         return agg
 

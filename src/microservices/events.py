@@ -1,4 +1,5 @@
 from datetime import datetime as dt
+from enum import Enum
 from typing import ClassVar, Optional
 from uuid import UUID
 
@@ -6,11 +7,52 @@ from pydantic import BaseModel, Field
 
 from microservices.domain import Event, EventStream
 
+"""Registration Events."""
+
+
+class PointOfContact(BaseModel):
+    """Nested model within Account for point of contact."""
+
+    name: str
+    email: str
+    phone: str | None
+
+
+class AccountRegistered(BaseModel):
+    """Signifies the creation of a new account in the system."""
+
+    business_name: str
+    phone: str
+    address: str
+    point_of_contact: PointOfContact
+
+
+class DefaultRoles(Enum):
+    SUPERUSER = "superuser"
+    SUPERREADER = "superreader"
+    ACCOUNT_SUPERUSER = "account-superuser"
+    ACCOUNT_SUPERREADER = "account-superreader"
+
+
+class AccountUserRegistered(BaseModel):
+    """Signifies the creation of a new account user in the system."""
+
+    id: UUID
+    email: str
+    first_name: str
+    last_name: str
+
+    default_role: DefaultRoles
+
+    class Config:
+        use_enum_values = True
+
+
 """Inspection Events."""
 
 
 class CustomerModel(BaseModel):
-    """..."""
+    """Nested model within Inspection events."""
 
     id: UUID
     name: str
@@ -19,7 +61,7 @@ class CustomerModel(BaseModel):
     phone: Optional[str] = Field(...)
 
 
-class InspectionNew(Event):
+class InspectionCreated(Event):
     """Event produced during add event of Inspections."""
 
     stream: ClassVar[EventStream] = EventStream.InspectionNew
@@ -63,7 +105,7 @@ class InspectionCancelled(Event):
     customer: CustomerModel
 
 
-class InspectionInvalidCancellation(Event):
+class InvalidInspectionCancellation(Event):
     stream: ClassVar[EventStream] = EventStream.InspectionCancellationInvalid
 
     inspection_id: UUID
@@ -71,10 +113,12 @@ class InspectionInvalidCancellation(Event):
 
 
 EVENTS = [
-    InspectionNew,
+    AccountRegistered,
+    AccountUserRegistered,
+    InspectionCreated,
     InspectionUpdated,
     InspectionCancelled,
-    InspectionInvalidCancellation,
+    InvalidInspectionCancellation,
 ]
 
 STREAM_TO_EVENT_MAPPING = {e.stream: e for e in EVENTS}
