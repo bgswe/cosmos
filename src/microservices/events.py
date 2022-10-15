@@ -1,6 +1,5 @@
 from datetime import datetime as dt
-from enum import Enum
-from typing import ClassVar, Optional
+from typing import ClassVar, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -29,13 +28,6 @@ class AccountRegistered(Event):
     point_of_contact: PointOfContact
 
 
-class DefaultRoles(Enum):
-    SUPERUSER = "superuser"
-    SUPERREADER = "superreader"
-    ACCOUNT_SUPERUSER = "account-superuser"
-    ACCOUNT_SUPERREADER = "account-superreader"
-
-
 class AccountUserRegistered(Event):
     """Signifies the creation of a new account user in the system."""
 
@@ -46,7 +38,7 @@ class AccountUserRegistered(Event):
     first_name: str
     last_name: str
 
-    default_role: DefaultRoles
+    roles: List[str]
 
     class Config:
         use_enum_values = True
