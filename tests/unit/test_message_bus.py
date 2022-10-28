@@ -413,4 +413,4 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
     # Iterate through spoofed sequence of raised events,
     # Verify the returned sequence from handle matches
     for i, e in enumerate([mock_a_event, *mock_events]):
-        assert e.id.hex == seq[i].hex
+        assert e.message_id.hex == seq[i].hex

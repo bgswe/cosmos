@@ -75,7 +75,7 @@ class MessageBus:
         """
 
         # Declares a queue to hold message, and any possibly raised future events
-        seed_id = message.id
+        seed_id = message.message_id
         self._queue[seed_id] = [message]
 
         logger.debug(
@@ -93,7 +93,7 @@ class MessageBus:
         # Process queue until all messages are handled and queue is empty
         while self._queue[seed_id]:
             message = self._queue[seed_id].pop(0)  # first in, first out
-            message_sequence.append(message.id)  # document message in sequence
+            message_sequence.append(message.message_id)  # document message in sequence
 
             # Invoke proper handle method based on message type
             if isinstance(message, Event):

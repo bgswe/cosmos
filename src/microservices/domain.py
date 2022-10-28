@@ -231,7 +231,7 @@ class EventStream(Enum):
 class Message(BaseModel):
     """Base Message model/schema."""
 
-    id: UUID = Field(default_factory=uuid4)
+    message_id: UUID = Field(default_factory=uuid4)
 
     class Config:
         use_enum_values = True
