@@ -33,7 +33,7 @@ class AccountUserRegistered(Event):
 
     stream: ClassVar[EventStream] = EventStream.AccountUserRegistered
 
-    id: UUID
+    pk: UUID
     email: str
     first_name: str
     last_name: str
@@ -50,7 +50,7 @@ class AccountUserRegistered(Event):
 class CustomerModel(BaseModel):
     """Nested model within Inspection events."""
 
-    id: UUID
+    pk: UUID
     name: str
     type: str
     email: str
