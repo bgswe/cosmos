@@ -64,7 +64,7 @@ class AsyncUnitOfWorkFactory(Generic[T]):
         self,
         uow_cls: Type[AsyncUnitOfWork[T]],
         repository_cls: Type[AsyncRepository[T]],
-        collect: Collect,
+        collect: Collect = None,
     ):
         """Takes a uow class and repo class, and saves for use in uow creation."""
 
