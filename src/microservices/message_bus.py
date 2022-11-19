@@ -46,8 +46,8 @@ class MessageBus:
     def __init__(
         self,
         domain: Domain,
-        event_publish: EventPublish,
         uow_factory: AsyncUnitOfWorkFactory,
+        event_publish: EventPublish = None,
         event_handlers: Dict[EventStream, List[EventHandler]] = None,
         command_handlers: Dict[Type[Command], CommandHandler] = None,
     ):
