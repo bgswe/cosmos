@@ -9,6 +9,14 @@ from microservices.domain import Event, EventStream
 """Registration Events."""
 
 
+class Account(BaseModel):
+    """Nested model for direct data associated with Accounts."""
+
+    name: str
+    phone: str
+    address: str
+
+
 class PointOfContact(BaseModel):
     """Nested model within Account for point of contact."""
 
@@ -22,9 +30,7 @@ class AccountRegistered(Event):
 
     stream: ClassVar[EventStream] = EventStream.AccountRegistered
 
-    business_name: str
-    phone: str
-    address: str
+    account: Account
     point_of_contact: PointOfContact
 
 
