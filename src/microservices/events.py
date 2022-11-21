@@ -20,7 +20,8 @@ class Account(BaseModel):
 class PointOfContact(BaseModel):
     """Nested model within Account for point of contact."""
 
-    name: str
+    first: str
+    last: str
     email: str
     phone: str | None
 
