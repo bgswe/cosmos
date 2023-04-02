@@ -11,11 +11,10 @@ from typing import (
     runtime_checkable,
 )
 
-from microservices.domain import Aggregate
-from microservices.events import Event
-from microservices.repository import AsyncRepository
+from cosmos.domain import AggregateRoot, Event
+from cosmos.repository import AsyncRepository
 
-T = TypeVar("T", bound=Aggregate)
+T = TypeVar("T", bound=AggregateRoot)
 
 
 class Collect(Protocol):

@@ -1,31 +1,30 @@
 import pytest
 
-from microservices.domain import Consumer, EventStream
-from microservices.utils import get_uuid
+from cosmos.domain import Consumer
+from cosmos.utils import get_uuid
 
 
 @pytest.fixture
 def mock_consumer() -> Consumer:
     return Consumer.create(
-        stream=EventStream.MockA,
+        stream="MockA",
         name="Some Name",
     )
 
 
-def test_consumer_init_calls_super_init():
+def test_consumer_create_calls_has_entity_meta_fields():
     """Verifies artifacts created in super init exists on consumer."""
 
-    c = Consumer(
-        pk=get_uuid(),
-        stream=EventStream.MockA,
+    c = Consumer.create(
+        id=get_uuid(),
+        stream="MockA",
         name="SomeConsumer",
-        acked_id="0",
         retroactive=False,
     )
 
     # These are the two attrs added in Aggregate.__init__
     assert hasattr(c, "_events")
-    assert hasattr(c, "_initialized_values")
+    assert hasattr(c, "_initial_properties")
 
 
 def test_new_consumer_has_acked_id_zero(mock_consumer: Consumer):

@@ -4,12 +4,11 @@ from typing import Iterable, List, Tuple
 
 import pytest
 
-from microservices.domain import Domain
-from microservices.events import Event, EventStream
-from microservices.message_bus import EventHandler, MessageBus
-from microservices.repository import AsyncRepository
-from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
-from microservices.utils import get_logger
+from cosmos.domain import Event
+from cosmos.message_bus import EventHandler, MessageBus
+from cosmos.repository import AsyncRepository
+from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
+from cosmos.utils import get_logger
 from tests.conftest import (
     MockAEvent,
     MockAsyncRepository,
@@ -21,20 +20,16 @@ from tests.conftest import (
 logger = get_logger()
 
 
-class MockPublish:
-    """Simple test implementation of a publisher."""
+async def mock_publish(event: Event):
+    logger.bind(event_dict=event.dict())
 
-    def publish(self, event: Event):
-        logger.bind(event_dict=event.dict())
-
-        logger.debug("MockPublisher.publish")
+    logger.debug("MockPublisher.publish")
 
 
 @pytest.fixture
 def empty_message_bus() -> MessageBus:
     return MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -44,7 +39,7 @@ def empty_message_bus() -> MessageBus:
 
 
 class MockEvent(Event):
-    stream = EventStream.MockA
+    stream = "MockA"
 
 
 @pytest.fixture
@@ -94,8 +89,7 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
     """MessageBus requires at minimum domain, and a UnitOfWorkFactory."""
 
     MessageBus(
-        domain="test",
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -122,15 +116,14 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
             collect=mock_collect,
         ),
         # mock_event is from stream MockA, so we handle MockB only
-        event_handlers={EventStream.MockB: [handler]},
+        event_handlers={"MockB": [handler]},
     )
 
     await bus.handle(mock_event)
@@ -148,14 +141,13 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
             collect=mock_collect,
         ),
-        event_handlers={EventStream.MockA: [handler]},
+        event_handlers={"MockA": [handler]},
     )
 
     await bus.handle(mock_event)
@@ -173,14 +165,13 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
     invocation_flag_b, handler_b = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
             collect=mock_collect,
         ),
-        event_handlers={EventStream.MockA: [handler_a, handler_b]},
+        event_handlers={"MockA": [handler_a, handler_b]},
     )
 
     await bus.handle(mock_event)
@@ -198,7 +189,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
     event_flags = {}
     event_handlers = {}
 
-    events = [EventStream.MockA, EventStream.MockB, EventStream.MockC]
+    events = ["MockA", "MockB", "MockC"]
 
     for event in events:
         handlers = [mock_event_handler_factory.get() for _ in range(3)]
@@ -207,8 +198,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_handlers[event] = [handler[1] for handler in handlers]
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -224,7 +214,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         assert flag.invoked
 
     # Does not invoke other handlers for other events
-    for event in [EventStream.MockB, EventStream.MockC]:
+    for event in ["MockB", "MockC"]:
         for flag in event_flags[event]:
             assert not flag.invoked
 
@@ -260,8 +250,7 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -269,8 +258,8 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            EventStream.MockA: [mock_event_handler_factory.get()[1]],
-            EventStream.MockB: [mock_b_handler],
+            "MockA": [mock_event_handler_factory.get()[1]],
+            "MockB": [mock_b_handler],
         },
     )
 
@@ -319,8 +308,7 @@ async def test_message_bus_handle_calls_correct_event_sequence(
     mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -328,9 +316,9 @@ async def test_message_bus_handle_calls_correct_event_sequence(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            EventStream.MockA: [mock_event_handler_factory.get()[1]],
-            EventStream.MockB: [mock_b_handler],
-            EventStream.MockC: [mock_c_handler],
+            "MockA": [mock_event_handler_factory.get()[1]],
+            "MockB": [mock_b_handler],
+            "MockC": [mock_c_handler],
         },
     )
 
@@ -388,8 +376,7 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
     mock_events, mock_collect = mock_collect_spoofed_event_sequence_many
 
     bus = MessageBus(
-        domain=Domain.Test,
-        event_publish=MockPublish,
+        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
@@ -397,9 +384,9 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            EventStream.MockA: [mock_a_handler],
-            EventStream.MockB: [mock_b_handler],
-            EventStream.MockC: [mock_c_handler],
+            "MockA": [mock_a_handler],
+            "MockB": [mock_b_handler],
+            "MockC": [mock_c_handler],
         },
     )
 

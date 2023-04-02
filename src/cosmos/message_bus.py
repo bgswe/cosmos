@@ -4,16 +4,14 @@ from uuid import UUID
 
 import structlog
 
-from microservices.domain import (
+from cosmos.domain import (
     Command,
-    Domain,
     Event,
     EventPublish,
-    EventStream,
     Message,
 )
-from microservices.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
-from microservices.utils import get_logger
+from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
+from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -45,10 +43,9 @@ class MessageBus:
 
     def __init__(
         self,
-        domain: Domain,
         uow_factory: AsyncUnitOfWorkFactory,
         event_publish: EventPublish = None,
-        event_handlers: Dict[EventStream, List[EventHandler]] = None,
+        event_handlers: Dict[str, List[EventHandler]] = None,
         command_handlers: Dict[Type[Command], CommandHandler] = None,
     ):
         if event_handlers is None:
@@ -57,7 +54,6 @@ class MessageBus:
         if command_handlers is None:
             command_handlers = {}
 
-        self._domain = domain
         self._uow_factory = uow_factory
         self._event_handlers = event_handlers
         self._command_handlers = command_handlers
@@ -138,7 +134,7 @@ class MessageBus:
         # Only publish events that originate inside the domain, otherwise
         # we run the chance of republishing a previously published event.
         # Handlers should be idempotent, but it still pollutes message broker.
-        if event.domain == self._domain and self._event_publish:
+        if self._event_publish:
             # TODO: What if this fails?
             # Is it okay to commit failed publishes to the DB, and still
             # handle the event internally?
@@ -157,7 +153,6 @@ class MessageBus:
                 # Include the information required to possibly rerun
                 # failed handlers if necessary. More needed?
                 log = logger.bind(
-                    domain=event.domain,
                     event_id=event.id,
                     exception=e,
                     traceback=structlog.tracebacks.extract(type(e), e, e.__traceback__),
