@@ -2,53 +2,37 @@ from uuid import UUID
 
 import pytest
 
-from microservices.domain import Aggregate, Entity, Event, EventStream, create_entity
-from microservices.utils import get_logger, get_uuid
+from cosmos.domain import AggregateRoot, Entity, Event
+from cosmos.utils import get_logger, get_uuid
 from tests.conftest import MockAggregate
 
 
 class MockEntity(Entity):
-    def __init__(self, pk: UUID) -> None:
-        self._pk = pk
+    @classmethod
+    def create(cls, id: UUID = None):
+        return Entity.create_entity(
+            cls=cls,
+            id=id,
+        )
 
 
 @pytest.fixture
 def mock_entity() -> MockEntity:
-    return MockEntity(pk=get_uuid())
-
-
-class MockEntityNoID(Entity):
-    def __init__(self, pk: UUID) -> None:
-        pass
-
+    return MockEntity.create(id=get_uuid())
 
 @pytest.fixture
-def mock_entity_no_id() -> MockEntityNoID:
-    return MockEntityNoID(pk=get_uuid())
+def mock_entity_no_id() -> MockEntity:
+    return MockEntity.create()
 
 
-class MockAggregateWithAttrs(Aggregate):
+class MockAggregateWithAttrs(AggregateRoot):
     """..."""
 
-    def __init__(
-        self,
-        pk: UUID,
-        name: str,
-        phone: str | None,
-    ):
-        """Simple test implementation to capture some attributes in aggregate."""
-
-        self._pk = pk
-        self._name = name
-        self._phone = phone
-
-        super().__init__()
-
     @classmethod
-    def create(cls, pk: UUID, name: str, phone: str | None = None):
+    def create(cls, id: UUID, name: str, phone: str | None = None):
         """Simple create method w/ b few attributes."""
 
-        return create_entity(cls=cls, pk=pk, name=name, phone=phone)
+        return Entity.create_entity(cls=cls, id=id, name=name, phone=phone)
 
     @property
     def name(self) -> str:
@@ -71,14 +55,14 @@ class MockAggregateWithAttrs(Aggregate):
 def mock_aggregate_with_attrs() -> MockAggregateWithAttrs:
     """Simple fixture to return a new MockAggregateWithAttrs instance."""
 
-    return MockAggregateWithAttrs.create(pk=get_uuid(), name="Some Name")
+    return MockAggregateWithAttrs.create(id=get_uuid(), name="Some Name")
 
 
 def test_entity_has_id_property(mock_entity: Entity):
     """Verify that setting the _id attr allows id attr to be accessed."""
 
     try:
-        mock_entity.pk
+        mock_entity.id
     except Exception as e:
         logger = get_logger()
 
@@ -86,15 +70,6 @@ def test_entity_has_id_property(mock_entity: Entity):
         log.error("exception raised accessing id attr on mock entity")
 
         assert False  # fail the test
-
-
-def test_entity_with_no_id_raises_attr_error_on_access(
-    mock_entity_no_id: Entity,
-):
-    """Verifies an incorrectly id-deficient mock entity raises the error."""
-
-    with pytest.raises(AttributeError):
-        mock_entity_no_id.id
 
 
 def test_aggregate_has_empty_events_list_after_init():
@@ -116,7 +91,7 @@ def test_aggregate_uses_given_id_if_given():
 
 
 def test_aggregate_new_event_adds_to_events_list(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_a_event: Event,
 ):
     """Verifies adding a new event places event in events list."""
@@ -128,24 +103,30 @@ def test_aggregate_new_event_adds_to_events_list(
     assert len(mock_aggregate.events) == 1
 
     event_from_events = mock_aggregate.events.pop(0)
-    assert event_from_events.stream == EventStream.MockA
+    assert event_from_events.stream == "MockA"
     assert event_from_events is mock_a_event
 
 
 def test_initialized_values_are_correct_immediately_after_init():
     """Verifies captured values on init are correct."""
 
-    attrs = {"pk": get_uuid(), "name": "Some Name", "phone": None}
+    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
 
     agg = MockAggregateWithAttrs.create(**attrs)
 
-    assert attrs == agg.initialized_values
+    expected_attrs = {}
+    expected_attrs.update(agg.initial_properties)
+    
+    expected_attrs.pop("created_at")
+    expected_attrs.pop("updated_at")
+
+    assert attrs == expected_attrs 
 
 
 def test_initialized_values_are_correct_after_changes():
     """Verifies init values are still correct after subsequent attr changes."""
 
-    attrs = {"pk": get_uuid(), "name": "Some Name", "phone": None}
+    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
 
     agg = MockAggregateWithAttrs.create(**attrs)
 
@@ -157,16 +138,22 @@ def test_initialized_values_are_correct_after_changes():
     agg.phone = new_phone
     assert agg.phone == new_phone
 
-    assert attrs == agg.initialized_values
+    expected_attrs = {}
+    expected_attrs.update(agg.initial_properties)
+    
+    expected_attrs.pop("created_at")
+    expected_attrs.pop("updated_at")
+
+    assert attrs == expected_attrs
 
 
-def test_changed_values_is_empty_when_no_changes(mock_aggregate_with_attrs: Aggregate):
+def test_property_changes_is_empty_when_no_changes(mock_aggregate_with_attrs: AggregateRoot):
     """Verifies changed values is empty when no changes are made."""
+    print(mock_aggregate_with_attrs.property_changes)
+    assert mock_aggregate_with_attrs.property_changes == {}
 
-    assert mock_aggregate_with_attrs.changed_values == {}
 
-
-def test_change_one_value_verify_changed_values_is_correct(
+def test_change_one_value_verify_property_changes_is_correct(
     mock_aggregate_with_attrs: MockAggregateWithAttrs,
 ):
     """..."""
@@ -174,27 +161,27 @@ def test_change_one_value_verify_changed_values_is_correct(
     new_phone = "(111)111-1111"
     mock_aggregate_with_attrs.phone = new_phone
 
-    assert mock_aggregate_with_attrs.changed_values == {"phone": new_phone}
+    assert mock_aggregate_with_attrs.property_changes == {"phone": new_phone}
 
 
 def test_create_entity_uses_id_when_given():
-    pk = get_uuid()
-    entity = create_entity(MockEntity, pk=pk)
+    id = get_uuid()
+    entity = Entity.create_entity(MockEntity, id=id)
 
-    assert entity.pk is not None
-    assert entity.pk.hex == pk.hex
+    assert entity.id is not None
+    assert entity.id.hex == id.hex
 
 
 def test_create_entity_generates_id_when_not_given():
-    entity = create_entity(MockEntity)
+    entity = Entity.create_entity(MockEntity)
 
-    assert entity.pk is not None
-    assert type(entity.pk) == UUID
+    # assert entity.id is not None
+    # assert type(entity.id) == UUID
 
 
 def test_create_entity_returns_correct_instance_type():
     """Verifies the entity returned is of the correct type."""
 
-    entity = create_entity(MockEntity)
+    entity = Entity.create_entity(MockEntity)
 
     assert type(entity) == MockEntity

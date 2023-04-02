@@ -4,9 +4,9 @@ from uuid import UUID
 
 import pytest
 
-from microservices.domain import Aggregate
-from microservices.repository import AsyncRepository
-from microservices.utils import get_logger
+from cosmos.domain import AggregateRoot
+from cosmos.repository import AsyncRepository
+from cosmos.utils import get_logger
 from tests.conftest import MockAggregate
 
 logger = get_logger()
@@ -36,7 +36,7 @@ def mock_async_repository_get() -> AsyncRepository:
 class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get_list' method."""
 
-    async def _get_list(self, **kwargs) -> List[Aggregate]:
+    async def _get_list(self, **kwargs) -> List[AggregateRoot]:
         """Simulates returning a list of aggregates."""
 
         if kwargs.get("empty", None):
@@ -143,7 +143,7 @@ def test_baseline_mock_async_repository(mock_repository: AsyncRepository):
 
 
 async def test_async_repo_get_returns_correct_aggregate(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get returns expected MockAggregate."""
@@ -156,7 +156,7 @@ async def test_async_repo_get_returns_correct_aggregate(
 
 async def test_async_repo_get_returns_none_when_not_found(
     mock_uuid: UUID,
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get returns 'None' when agg is not found."""
@@ -168,7 +168,7 @@ async def test_async_repo_get_returns_none_when_not_found(
 
 
 async def test_async_repo_get_seen_is_correct(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get invokes seen response."""
@@ -186,7 +186,7 @@ async def test_async_repo_get_seen_is_correct(
 
 async def test_async_repo_get_seen_is_correct_when_not_found(
     mock_uuid: UUID,
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get doesn't affect seen when agg not found."""
@@ -209,7 +209,7 @@ async def test_async_repo_get_list_returns_list(
     assert len(aggregate_list) > 0
     # Assert the list is of aggregates
     for agg in aggregate_list:
-        assert isinstance(agg, Aggregate)
+        assert isinstance(agg, AggregateRoot)
 
 
 async def test_async_repo_get_list_seen_count_is_correct(
@@ -237,7 +237,7 @@ async def test_async_repo_get_list_seen_aggregates_are_correct(
 
 
 async def test_mock_async_repo_add_simple_call(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_add: AsyncRepository,
 ):
     """Verifies AsyncRepository add is invoked w/o issue."""
@@ -246,7 +246,7 @@ async def test_mock_async_repo_add_simple_call(
 
 
 async def test_mock_async_repo_add_calls__add(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_add_raise_exception: AsyncRepository,
 ):
     """Verifies AsyncRepository add invokes _add."""
@@ -257,7 +257,7 @@ async def test_mock_async_repo_add_calls__add(
 
 
 async def test_mock_async_repo_add_seen_is_correct(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_add: AsyncRepository,
 ):
     """Verifies AsyncRepository add invokes the seen response."""
@@ -270,7 +270,7 @@ async def test_mock_async_repo_add_seen_is_correct(
 
 
 async def test_mock_async_repo_update(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_update: AsyncRepository,
 ):
     """Verifies AsyncRepository update is invoked w/o issue."""
@@ -279,7 +279,7 @@ async def test_mock_async_repo_update(
 
 
 async def test_mock_async_repo_update_raise_exception(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_update_raise_exception: AsyncRepository,
 ):
     """Verifies AsyncRepository update invokes _update."""
@@ -290,7 +290,7 @@ async def test_mock_async_repo_update_raise_exception(
 
 
 async def test_mock_async_repo_update_seen_is_correct(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_update: AsyncRepository,
 ):
     """Verifies AsyncRepository update invokes the seen response."""
@@ -304,7 +304,7 @@ async def test_mock_async_repo_update_seen_is_correct(
 
 
 async def test_mock_async_repo_get_list_seen_is_correct(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_update: AsyncRepository,
 ):
     """Verifies AsyncRepository update invokes the seen response."""
@@ -318,7 +318,7 @@ async def test_mock_async_repo_get_list_seen_is_correct(
 
 
 async def test_mock_async_repo_get_returns_correct_aggregate(
-    mock_aggregate: Aggregate,
+    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get returns expected MockAggregate."""

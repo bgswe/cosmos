@@ -4,10 +4,10 @@ from asyncpg import connect
 from tortoise import Tortoise  # type: ignore
 from tortoise.transactions import in_transaction  # type: ignore
 
-from microservices.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
-from microservices.domain import Aggregate
-from microservices.repository import AsyncRepository
-from microservices.unit_of_work import Collect
+from cosmos.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
+from cosmos.domain import Aggregate
+from cosmos.repository import AsyncRepository
+from cosmos.unit_of_work import Collect
 
 T = TypeVar("T", bound=Aggregate)
 

@@ -5,11 +5,10 @@ from uuid import UUID
 
 import pytest
 
-from microservices.domain import Aggregate, create_entity
-from microservices.events import Event, EventStream
-from microservices.repository import AsyncRepository
-from microservices.unit_of_work import Collect
-from microservices.utils import get_logger
+from cosmos.domain import AggregateRoot, Entity, Event
+from cosmos.repository import AsyncRepository
+from cosmos.unit_of_work import Collect
+from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -21,18 +20,12 @@ def mock_uuid() -> UUID:
     return UUID("11111111-1111-1111-1111-111111111111")
 
 
-class MockAggregate(Aggregate):
+class MockAggregate(AggregateRoot):
     """Simple test aggregate implementation."""
-
-    def __init__(self, pk: UUID):
-        """Most simple implementation of init."""
-
-        self._pk = pk  # must set _id attr
-        super().__init__()  # must call super init
 
     @classmethod
     def create(cls, pk: UUID = None) -> MockAggregate:
-        new = create_entity(cls=cls, pk=pk)
+        new = Entity.create_entity(cls=cls, pk=pk)
 
         assert type(new) == MockAggregate  # mypy assertion
 
@@ -47,7 +40,7 @@ def mock_aggregate() -> MockAggregate:
 
 
 class MockAEvent(Event):
-    stream = EventStream.MockA
+    stream = "MockA"
 
 
 @pytest.fixture
@@ -56,7 +49,7 @@ def mock_a_event() -> Event:
 
 
 class MockBEvent(Event):
-    stream = EventStream.MockB
+    stream = "MockB"
 
 
 @pytest.fixture
@@ -65,7 +58,7 @@ def mock_b_event() -> Event:
 
 
 class MockCEvent(Event):
-    stream = EventStream.MockC
+    stream = "MockC"
 
 
 @pytest.fixture

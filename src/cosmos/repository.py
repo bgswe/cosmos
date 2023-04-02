@@ -1,8 +1,9 @@
 from typing import Generic, List, TypeVar
+from uuid import UUID
 
-from microservices.domain import PK, Aggregate
+from cosmos.domain import AggregateRoot
 
-T = TypeVar("T", bound=Aggregate)
+T = TypeVar("T", bound=AggregateRoot)
 
 
 class AsyncRepository(Generic[T]):
@@ -28,7 +29,7 @@ class AsyncRepository(Generic[T]):
 
         self._seen.append(aggregate)
 
-    async def get(self, pk: PK) -> T:
+    async def get(self, pk: UUID) -> T:
         """Call subclass _get implementation and note the aggregate as seen.
 
         :param: id -> the UUID of Aggregate to get
@@ -78,7 +79,7 @@ class AsyncRepository(Generic[T]):
 
         self._mark_seen(aggregate=aggregate)
 
-    async def _get(self, pk: PK) -> T:
+    async def _get(self, pk: UUID) -> T:
         """Required for repository implementation to get an instance type 'T'."""
 
         raise NotImplementedError

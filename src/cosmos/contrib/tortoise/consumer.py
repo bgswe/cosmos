@@ -3,10 +3,10 @@ from uuid import UUID
 
 from tortoise import fields
 
-from microservices.contrib.tortoise.models import AbstractBaseModel
-from microservices.domain import PK, Consumer
+from cosmos.contrib.tortoise.models import AbstractBaseModel
+from cosmos.domain import PK, Consumer
 from microservices.events import EventStream
-from microservices.repository import AsyncRepository
+from cosmos.repository import AsyncRepository
 
 
 class ConsumerORM(AbstractBaseModel):

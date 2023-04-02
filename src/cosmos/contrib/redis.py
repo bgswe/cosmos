@@ -5,17 +5,17 @@ from typing import Any, Dict, Protocol, Tuple
 
 from redis import Redis
 
-from microservices.domain import (
+from cosmos.domain import (
     Consumer,
-    Domain,
     DomainConsumerConfig,
     EventConsume,
     EventPublish,
+    Event
 )
-from microservices.events import STREAM_TO_EVENT_MAPPING, Event
-from microservices.message_bus import MessageBus
-from microservices.unit_of_work import AsyncUnitOfWorkFactory
-from microservices.utils import get_logger
+
+from cosmos.message_bus import MessageBus
+from cosmos.unit_of_work import AsyncUnitOfWorkFactory
+from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -62,7 +62,7 @@ def redis_publisher(client: RedisClient) -> EventPublish:
 
         try:
             response = client.xadd(
-                name=event.stream.value,
+                name=event.stream,
                 fields={"values": json.dumps({values})},
             )
 
@@ -79,7 +79,6 @@ def redis_publisher(client: RedisClient) -> EventPublish:
 
 
 async def consume(
-    domain: Domain,
     config: DomainConsumerConfig,
     uow_factory: AsyncUnitOfWorkFactory,
     consumer_uow_factory: AsyncUnitOfWorkFactory[Consumer],
@@ -94,7 +93,6 @@ async def consume(
         event_handlers[k] = [consumer_config.handler for consumer_config in v]
 
     bus = MessageBus(
-        domain=domain,
         uow_factory=uow_factory,
         event_handlers=event_handlers,
         event_publish=EventPublish,
@@ -184,7 +182,7 @@ async def redis_consumer(client: RedisClient) -> EventConsume:
 
         try:
             response = client.xread(
-                {stream.value: consumer.acked_id},
+                {stream: consumer.acked_id},
                 count=1,  # EVAL: Consider whether to do anything w/ count
             )
 
