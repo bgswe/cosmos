@@ -84,10 +84,10 @@ def test_aggregate_has_empty_events_list_after_init():
 def test_aggregate_uses_given_id_if_given():
     """Verifies that the id is used and not discarded or overwritten."""
 
-    mock_pk = get_uuid()
-    agg = MockAggregate.create(pk=mock_pk)
+    mock_id = get_uuid()
+    agg = MockAggregate.create(id=mock_id)
 
-    assert agg.pk.hex == mock_pk.hex
+    assert agg.id.hex == mock_id.hex
 
 
 def test_aggregate_new_event_adds_to_events_list(

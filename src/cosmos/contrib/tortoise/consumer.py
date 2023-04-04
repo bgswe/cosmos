@@ -4,13 +4,12 @@ from uuid import UUID
 from tortoise import fields
 
 from cosmos.contrib.tortoise.models import AbstractBaseModel
-from cosmos.domain import PK, Consumer
-from microservices.events import EventStream
+from cosmos.domain import Consumer
 from cosmos.repository import AsyncRepository
 
 
 class ConsumerORM(AbstractBaseModel):
-    stream = fields.CharEnumField(EventStream)
+    stream = fields.CharField(max_length=255)
     name = fields.CharField(max_length=255)
     acked_id = fields.CharField(max_length=255)
     retroactive = fields.BooleanField()
@@ -34,8 +33,8 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
             for c in consumer_orm_list
         ]
 
-    async def _get(self, pk: PK) -> Consumer:
-        consumer_orm = await ConsumerORM.get(pk=pk)
+    async def _get(self, id: UUID) -> Consumer:
+        consumer_orm = await ConsumerORM.get(pk=id)
 
         return Consumer(
             pk=UUID(consumer_orm.pk),
@@ -47,7 +46,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
 
     async def _add(self, consumer: Consumer):
         await ConsumerORM.create(
-            pk=consumer.pk,
+            id=consumer.id,
             stream=consumer.stream,
             name=consumer.name,
             acked_id=consumer.acked_id,
@@ -55,7 +54,7 @@ class TortoiseConsumerRepository(AsyncRepository[Consumer]):
         )
 
     async def _update(self, consumer: Consumer):
-        consumer_orm = await ConsumerORM.get(pk=consumer.pk)
+        consumer_orm = await ConsumerORM.get(pk=consumer.id)
 
         # TODO: Only updating acked_id for now
         consumer_orm.acked_id = consumer.acked_id

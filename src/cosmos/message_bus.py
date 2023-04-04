@@ -44,9 +44,9 @@ class MessageBus:
     def __init__(
         self,
         uow_factory: AsyncUnitOfWorkFactory,
-        event_publish: EventPublish = None,
-        event_handlers: Dict[str, List[EventHandler]] = None,
-        command_handlers: Dict[Type[Command], CommandHandler] = None,
+        event_publish: EventPublish |None= None,
+        event_handlers: Dict[str, List[EventHandler]]|None = None,
+        command_handlers: Dict[Type[Command], CommandHandler]|None = None,
     ):
         if event_handlers is None:
             event_handlers = {}
@@ -153,7 +153,7 @@ class MessageBus:
                 # Include the information required to possibly rerun
                 # failed handlers if necessary. More needed?
                 log = logger.bind(
-                    event_id=event.id,
+                    event_id=event.message_id,
                     exception=e,
                     traceback=structlog.tracebacks.extract(type(e), e, e.__traceback__),
                 )

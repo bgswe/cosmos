@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-from typing import Any, Dict, Protocol, Tuple
+from typing import Any, Dict, Protocol, Tuple, Type
 
 from redis import Redis
 
@@ -10,7 +10,7 @@ from cosmos.domain import (
     DomainConsumerConfig,
     EventConsume,
     EventPublish,
-    Event
+    Event,
 )
 
 from cosmos.message_bus import MessageBus
@@ -95,7 +95,7 @@ async def consume(
     bus = MessageBus(
         uow_factory=uow_factory,
         event_handlers=event_handlers,
-        event_publish=EventPublish,
+        event_publish=event_publish,
     )
 
     # Create consumer sets representing consumer config, and current consumer state
@@ -151,7 +151,7 @@ async def loop_event_consumer(
     while True:
         try:
             async with await uow_factory.get_uow() as uow:
-                consumer = await uow.repository.get(pk=consumer.pk)
+                consumer = await uow.repository.get(id=consumer.id)
 
                 consumer_response = await event_consume(consumer=consumer)
 
@@ -172,7 +172,7 @@ async def loop_event_consumer(
             pass
 
 
-async def redis_consumer(client: RedisClient) -> EventConsume:
+async def redis_consumer(client: RedisClient, stream_to_event_map: Dict[str, Type[Event]]) -> EventConsume:
     """Closure to provide redis client wh/ allows EventConsume to be used as value."""
 
     async def read_stream(consumer: Consumer) -> Tuple[Event, str] | None:
@@ -200,7 +200,7 @@ async def redis_consumer(client: RedisClient) -> EventConsume:
                     )
 
                     # Hydrates the mapped event type w/ values from the stream
-                    hydrated_event = STREAM_TO_EVENT_MAPPING[stream](
+                    hydrated_event = stream_to_event_map[stream](
                         **json.loads(values["values"])
                     )
 
