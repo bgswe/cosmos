@@ -5,11 +5,11 @@ from tortoise import Tortoise  # type: ignore
 from tortoise.transactions import in_transaction  # type: ignore
 
 from cosmos.contrib.pg.async_uow import AsyncUnitOfWorkPostgres
-from cosmos.domain import Aggregate
+from cosmos.domain import AggregateRoot
 from cosmos.repository import AsyncRepository
 from cosmos.unit_of_work import Collect
 
-T = TypeVar("T", bound=Aggregate)
+T = TypeVar("T", bound=AggregateRoot)
 
 
 # EVAL: Do we need to expose collection here? I think this might be
@@ -44,7 +44,7 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
     def __init__(
         self,
         repository: AsyncRepository[T],
-        collect: Collect = None,
+        collect: Collect |None= None,
     ):
         if collect is not None:
             self._collect = collect

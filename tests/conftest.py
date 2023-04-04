@@ -24,8 +24,8 @@ class MockAggregate(AggregateRoot):
     """Simple test aggregate implementation."""
 
     @classmethod
-    def create(cls, pk: UUID = None) -> MockAggregate:
-        new = Entity.create_entity(cls=cls, pk=pk)
+    def create(cls, id: UUID = None) -> MockAggregate:
+        new = Entity.create_entity(cls=cls, id=id)
 
         assert type(new) == MockAggregate  # mypy assertion
 

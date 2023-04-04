@@ -63,7 +63,7 @@ class ValueObject(DomainObject):
             return False
 
         # compare shallow equality for property dicts
-        return self._properties == other._properties
+        return self._initial_properties == other._initial_properties
     
 
 class Entity(DomainObject, ABC):
@@ -101,12 +101,12 @@ class Entity(DomainObject, ABC):
             return True
 
         if type(other) == type(self):
-            return self.id == other.id
+            return self.id == other.id  # type: ignore
 
         return False
 
     @staticmethod
-    def create():
+    def create(self, *args, **kwargs):
         """Implemented Entities require the implementation of a create method."""
 
         raise NotImplementedError
@@ -157,7 +157,7 @@ class AggregateRoot(Entity, ABC):
 
         super().__init__(**kwargs)
 
-        self._events: List[Event] = []
+        self._events = []
 
     @property
     def events(self) -> List[Event]:
@@ -174,12 +174,18 @@ class AggregateRoot(Entity, ABC):
 class Consumer(AggregateRoot):
     """Aggregate for Event Stream Consumers."""
 
+    name: str
+    stream: str
+    acked_id: str
+    retroactive: bool
+
     @classmethod
-    def create(
+    def create(  # type: ignore
         cls,
+        *,
+        id: UUID|None = None,
         stream: str,
         name: str,
-        id: UUID = None,
         retroactive: bool = True,
     ) -> Consumer:
         """Standard create method for a Consumer aggregate."""

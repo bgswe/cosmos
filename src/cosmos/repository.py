@@ -18,7 +18,7 @@ class AsyncRepository(Generic[T]):
     def __init__(self):
         """Initializes set to track what aggregates have been seen."""
 
-        self._seen: List[T] = []
+        self._seen = []
 
     @property
     def seen(self) -> List[T]:
@@ -29,13 +29,13 @@ class AsyncRepository(Generic[T]):
 
         self._seen.append(aggregate)
 
-    async def get(self, pk: UUID) -> T:
+    async def get(self, id: UUID) -> T:
         """Call subclass _get implementation and note the aggregate as seen.
 
         :param: id -> the UUID of Aggregate to get
         """
 
-        agg = await self._get(pk=pk)
+        agg = await self._get(id=id)
 
         if agg:
             self._mark_seen(aggregate=agg)
@@ -79,7 +79,7 @@ class AsyncRepository(Generic[T]):
 
         self._mark_seen(aggregate=aggregate)
 
-    async def _get(self, pk: UUID) -> T:
+    async def _get(self, id: UUID) -> T:
         """Required for repository implementation to get an instance type 'T'."""
 
         raise NotImplementedError
