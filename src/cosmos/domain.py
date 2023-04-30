@@ -105,7 +105,7 @@ class Entity(DomainObject, ABC):
 
         return False
 
-    @staticmethod
+    @classmethod
     def create(self, *args, **kwargs):
         """Implemented Entities require the implementation of a create method."""
 
@@ -221,12 +221,10 @@ class Message(BaseModel):
 class Event(Message):
     """Base Event of our domain model."""
 
-    # Each event has an associated named stream, essentially a type
-    stream: str
+    def name(self) -> str:
+        """..."""
 
-    @property
-    def domain(self) -> str:
-        return self.stream.split(".")[0]
+        return type(self).__name__
 
 
 class Command(Message):
@@ -253,6 +251,8 @@ class EventConsume(Protocol):
     """Callback protocall for consuming events from the stream bus."""
 
     async def __call__(self, consumer: Consumer) -> Tuple[Event, str] | None:
+        
+        
         ...
 
 

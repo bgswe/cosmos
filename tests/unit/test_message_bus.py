@@ -3,18 +3,19 @@ from __future__ import annotations
 from typing import Iterable, List, Tuple
 
 import pytest
+from structlog import get_logger
 
 from cosmos.domain import Event
 from cosmos.message_bus import EventHandler, MessageBus
 from cosmos.repository import AsyncRepository
 from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory, Collect
-from cosmos.utils import get_logger
+
 from tests.conftest import (
-    MockAEvent,
     MockAsyncRepository,
     MockAsyncUnitOfWork,
-    MockBEvent,
     mock_collect,
+    MockEventA,
+    MockEventB,
 )
 
 logger = get_logger()
@@ -36,15 +37,6 @@ def empty_message_bus() -> MessageBus:
             collect=mock_collect,
         ),
     )
-
-
-class MockEvent(Event):
-    stream = "MockA"
-
-
-@pytest.fixture
-def mock_event() -> Event:
-    return MockEvent()
 
 
 class MockEventHandlerInvokationFlag:
@@ -100,15 +92,15 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
 
 async def test_message_bus_without_event_handlers_doesnt_raise_exception_on_handle(
     empty_message_bus: MessageBus,
-    mock_event: Event,
+    mock_event_a: Event,
 ):
     """Verify calling handle with on a bus w/o handlers doesn't raise exception."""
 
-    await empty_message_bus.handle(mock_event)
+    await empty_message_bus.handle(mock_event_a)
 
 
 async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_handler(
-    mock_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
 ):
     """Verifies calling handle on bus w/ only other events configured w/ handlers."""
@@ -123,17 +115,17 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
             collect=mock_collect,
         ),
         # mock_event is from stream MockA, so we handle MockB only
-        event_handlers={"MockB": [handler]},
+        event_handlers={"MockBEvent": [handler]},
     )
 
-    await bus.handle(mock_event)
+    await bus.handle(mock_event_a)
 
     # Ensure the handler was not invoked incorrectly
     assert not invocation_flag.invoked
 
 
 async def test_message_bus_simple_event_handler_invokes_correct_handler(
-    mock_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
 ):
     """Verify calling handle on bus w/ configured handler, invokes said handler."""
@@ -147,16 +139,16 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
             repository_cls=MockAsyncRepository,
             collect=mock_collect,
         ),
-        event_handlers={"MockA": [handler]},
+        event_handlers={"MockEventA": [handler]},
     )
 
-    await bus.handle(mock_event)
+    await bus.handle(mock_event_a)
 
     assert invocation_flag.invoked
 
 
 async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
-    mock_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
 ):
     """Verify calling handle on bus w/ many configured handlers, invokes them all."""
@@ -171,17 +163,17 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
             repository_cls=MockAsyncRepository,
             collect=mock_collect,
         ),
-        event_handlers={"MockA": [handler_a, handler_b]},
+        event_handlers={"MockEventA": [handler_a, handler_b]},
     )
 
-    await bus.handle(mock_event)
+    await bus.handle(mock_event_a)
 
     assert invocation_flag_a.invoked
     assert invocation_flag_b.invoked
 
 
 async def test_message_bus_event_handler_invokes_only_associated_handlers(
-    mock_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
 ):
     """Verifies ONLY the associated event handlers are invoked w/ many handlers."""
@@ -189,7 +181,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
     event_flags = {}
     event_handlers = {}
 
-    events = ["MockA", "MockB", "MockC"]
+    events = ["MockEventA", "AltMockEventA", "AltMockEventB"]
 
     for event in events:
         handlers = [mock_event_handler_factory.get() for _ in range(3)]
@@ -207,14 +199,14 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_handlers=event_handlers,
     )
 
-    await bus.handle(mock_event)
+    await bus.handle(mock_event_a)
 
     # Invokes the list of handlers for proper event
-    for flag in event_flags[mock_event.stream]:
+    for flag in event_flags["MockEventA"]:
         assert flag.invoked
 
     # Does not invoke other handlers for other events
-    for event in ["MockB", "MockC"]:
+    for event in ["AltMockEventA", "AltMockEventB"]:
         for flag in event_flags[event]:
             assert not flag.invoked
 
@@ -241,7 +233,7 @@ def mock_collect_spoofed_event(mock_b_event: Event) -> Collect:
 
 
 async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
-    mock_a_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
     mock_collect_spoofed_event: Collect,
 ):
@@ -258,12 +250,12 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            "MockA": [mock_event_handler_factory.get()[1]],
-            "MockB": [mock_b_handler],
+            "MockEventA": [mock_event_handler_factory.get()[1]],
+            "MockEventB": [mock_b_handler],
         },
     )
 
-    await bus.handle(mock_a_event)
+    await bus.handle(mock_event_a)
     # We want to verify that the spoofed MockB event is correctly handled, and
     # the configured handler invoked
     assert mock_b_handler_invoked.invoked
@@ -298,7 +290,7 @@ def mock_collect_spoofed_event_sequence(
 
 
 async def test_message_bus_handle_calls_correct_event_sequence(
-    mock_a_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
     mock_collect_spoofed_event_sequence: Collect,
 ):
@@ -316,13 +308,13 @@ async def test_message_bus_handle_calls_correct_event_sequence(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            "MockA": [mock_event_handler_factory.get()[1]],
-            "MockB": [mock_b_handler],
-            "MockC": [mock_c_handler],
+            "MockEventA": [mock_event_handler_factory.get()[1]],
+            "MockEventB": [mock_b_handler],
+            "MockEventC": [mock_c_handler],
         },
     )
 
-    seq = await bus.handle(mock_a_event)  # noqa
+    seq = await bus.handle(mock_event_a)  # noqa
     # TODO: Finish this test to ensure that events are properly being ordered
 
     assert mock_b_handler_invoked.invoked
@@ -333,7 +325,7 @@ async def test_message_bus_handle_calls_correct_event_sequence(
 def mock_collect_spoofed_event_sequence_many() -> Tuple[List[Event], Collect]:
     count = 0
 
-    events = [MockBEvent(), MockAEvent(), MockBEvent(), MockAEvent()]
+    events = [MockEventA(), MockEventB(), MockEventB(), MockEventA()]
 
     def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
         """Simple test collect that returns the seen aggregates in a new list."""
@@ -363,7 +355,7 @@ def mock_collect_spoofed_event_sequence_many() -> Tuple[List[Event], Collect]:
 
 
 async def test_message_bus_handle_calls_correct_event_sequence_many(
-    mock_a_event: Event,
+    mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
     mock_collect_spoofed_event_sequence_many: Tuple[List[Event], Collect],
 ):
@@ -384,13 +376,13 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
-            "MockA": [mock_a_handler],
-            "MockB": [mock_b_handler],
-            "MockC": [mock_c_handler],
+            "MockEventA": [mock_a_handler],
+            "MockEventB": [mock_b_handler],
+            "MockEventC": [mock_c_handler],
         },
     )
 
-    seq = await bus.handle(mock_a_event)
+    seq = await bus.handle(mock_event_a)
 
     logger.debug("handled seq", seq=seq)
 
@@ -399,5 +391,5 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
 
     # Iterate through spoofed sequence of raised events,
     # Verify the returned sequence from handle matches
-    for i, e in enumerate([mock_a_event, *mock_events]):
+    for i, e in enumerate([mock_event_a, *mock_events]):
         assert e.message_id.hex == seq[i].hex

@@ -1,15 +1,16 @@
 from uuid import UUID
 
 import pytest
+from structlog import get_logger
 
 from cosmos.domain import AggregateRoot, Entity, Event
-from cosmos.utils import get_logger, get_uuid
+from cosmos.utils import get_uuid
 from tests.conftest import MockAggregate
 
 
 class MockEntity(Entity):
     @classmethod
-    def create(cls, id: UUID = None):
+    def create(cls, id: UUID|None = None):
         return Entity.create_entity(
             cls=cls,
             id=id,
@@ -92,19 +93,19 @@ def test_aggregate_uses_given_id_if_given():
 
 def test_aggregate_new_event_adds_to_events_list(
     mock_aggregate: AggregateRoot,
-    mock_a_event: Event,
+    mock_event_a: Event,
 ):
     """Verifies adding a new event places event in events list."""
 
     assert len(mock_aggregate.events) == 0
 
-    mock_aggregate.new_event(mock_a_event)
+    mock_aggregate.new_event(mock_event_a)
 
     assert len(mock_aggregate.events) == 1
 
     event_from_events = mock_aggregate.events.pop(0)
-    assert event_from_events.stream == "MockA"
-    assert event_from_events is mock_a_event
+    assert type(event_from_events).__name__ == "MockEventA"
+    assert event_from_events is mock_event_a
 
 
 def test_initialized_values_are_correct_immediately_after_init():

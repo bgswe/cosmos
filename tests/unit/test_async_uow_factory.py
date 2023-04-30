@@ -1,11 +1,11 @@
 from typing import TypeVar
 
 import pytest
+from structlog import get_logger
 
 from cosmos.domain import AggregateRoot
 from cosmos.repository import AsyncRepository
 from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
-from cosmos.utils import get_logger
 from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, mock_collect
 
 T = TypeVar("T", bound=AggregateRoot)

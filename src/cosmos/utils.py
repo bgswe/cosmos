@@ -2,7 +2,7 @@ import logging
 import warnings
 from uuid import UUID, uuid4
 
-from structlog import configure_once, get_logger, make_filtering_bound_logger  # noqa
+from structlog import configure_once, make_filtering_bound_logger
 from structlog.processors import JSONRenderer
 
 log_level_map = {

@@ -2,7 +2,7 @@ import asyncio
 from typing import Dict, List, Protocol, Type
 from uuid import UUID
 
-import structlog
+from structlog import get_logger, tracebacks
 
 from cosmos.domain import (
     Command,
@@ -11,7 +11,6 @@ from cosmos.domain import (
     Message,
 )
 from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
-from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -44,9 +43,9 @@ class MessageBus:
     def __init__(
         self,
         uow_factory: AsyncUnitOfWorkFactory,
-        event_publish: EventPublish |None= None,
-        event_handlers: Dict[str, List[EventHandler]]|None = None,
-        command_handlers: Dict[Type[Command], CommandHandler]|None = None,
+        event_publish: EventPublish | None=None,
+        event_handlers: Dict[str, List[EventHandler]] | None=None,
+        command_handlers: Dict[Type[Command], CommandHandler] | None=None,
     ):
         if event_handlers is None:
             event_handlers = {}
@@ -141,7 +140,7 @@ class MessageBus:
             await self._event_publish(event=event)
 
         # Invoke all configured handlers with the given event
-        for handler in self._event_handlers.get(event.stream, []):
+        for handler in self._event_handlers.get(type(event).__name__, []):
             try:
                 # Create new UnitOfWork for use in handler
                 uow = await self._uow_factory.get_uow()
@@ -155,7 +154,7 @@ class MessageBus:
                 log = logger.bind(
                     event_id=event.message_id,
                     exception=e,
-                    traceback=structlog.tracebacks.extract(type(e), e, e.__traceback__),
+                    traceback=tracebacks.extract(type(e), e, e.__traceback__),
                 )
                 log.error("raised exception during event handling")
 

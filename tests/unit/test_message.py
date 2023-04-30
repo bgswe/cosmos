@@ -4,9 +4,9 @@ from cosmos.domain import Event
 
 
 def test_event_assigns_uuid_if_not_given(
-    mock_a_event: Event,
+    mock_event_a: Event,
 ):
     """Verifies the root Event.id is populated with a valid uuid."""
 
-    assert mock_a_event.message_id is not None
-    assert type(mock_a_event.message_id) == UUID
+    assert mock_event_a.message_id is not None
+    assert type(mock_event_a.message_id) == UUID

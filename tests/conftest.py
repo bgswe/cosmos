@@ -4,11 +4,11 @@ from typing import Iterable
 from uuid import UUID
 
 import pytest
+from structlog import get_logger  # noqa
 
 from cosmos.domain import AggregateRoot, Entity, Event
 from cosmos.repository import AsyncRepository
 from cosmos.unit_of_work import Collect
-from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -24,7 +24,7 @@ class MockAggregate(AggregateRoot):
     """Simple test aggregate implementation."""
 
     @classmethod
-    def create(cls, id: UUID = None) -> MockAggregate:
+    def create(cls, id: UUID|None = None) -> MockAggregate:
         new = Entity.create_entity(cls=cls, id=id)
 
         assert type(new) == MockAggregate  # mypy assertion
@@ -39,31 +39,31 @@ def mock_aggregate() -> MockAggregate:
     return MockAggregate.create()
 
 
-class MockAEvent(Event):
-    stream = "MockA"
+class MockEventA(Event):
+    ...
 
 
 @pytest.fixture
-def mock_a_event() -> Event:
-    return MockAEvent()
+def mock_event_a() -> Event:
+    return MockEventA()
 
 
-class MockBEvent(Event):
-    stream = "MockB"
+class MockEventB(Event):
+    ...
 
 
 @pytest.fixture
 def mock_b_event() -> Event:
-    return MockBEvent()
+    return MockEventB()
 
 
-class MockCEvent(Event):
-    stream = "MockC"
+class MockEventC(Event):
+    ...
 
 
 @pytest.fixture
 def mock_c_event() -> Event:
-    return MockCEvent()
+    return MockEventC()
 
 
 class MockAsyncRepository(AsyncRepository[MockAggregate]):

@@ -3,10 +3,10 @@ from typing import List
 from uuid import UUID
 
 import pytest
+from structlog import get_logger
 
 from cosmos.domain import AggregateRoot
 from cosmos.repository import AsyncRepository
-from cosmos.utils import get_logger
 from tests.conftest import MockAggregate
 
 logger = get_logger()
@@ -15,7 +15,7 @@ logger = get_logger()
 class MockAsyncRepositoryGet(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get' method."""
 
-    async def _get(self, id: UUID) -> MockAggregate:
+    async def _get(self, id: UUID) -> MockAggregate|None:
         """Simulates returning an aggregate or None if 'Not Found'."""
 
         if id == UUID(
@@ -36,7 +36,7 @@ def mock_async_repository_get() -> AsyncRepository:
 class MockAsyncRepositoryGetList(AsyncRepository[MockAggregate]):
     """Test implementation of AsyncRepository with '_get_list' method."""
 
-    async def _get_list(self, **kwargs) -> List[AggregateRoot]:
+    async def _get_list(self, **kwargs) -> List[MockAggregate]:
         """Simulates returning a list of aggregates."""
 
         if kwargs.get("empty", None):
@@ -150,13 +150,14 @@ async def test_async_repo_get_returns_correct_aggregate(
 
     # Get the aggregate with the given id
     agg = await mock_async_repository_get.get(id=mock_aggregate.id)
+
+    assert agg is not None
     # Assert the returned id matches the given id
     assert agg.id == mock_aggregate.id
 
 
 async def test_async_repo_get_returns_none_when_not_found(
     mock_uuid: UUID,
-    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get returns 'None' when agg is not found."""
@@ -177,16 +178,20 @@ async def test_async_repo_get_seen_is_correct(
     agg = await mock_async_repository_get.get(
         id=mock_aggregate.id
     )  # id is optional on mock repo
+    assert agg is not None
+    
     # Asserts AsyncRepository.get() adds the aggregate to the seen aggregates
     assert len(mock_async_repository_get.seen) == 1
     # Access the one aggregate, and confirm it's this one
     seen_agg = mock_async_repository_get.seen.pop()
+
+
+    assert seen_agg is not None
     assert seen_agg.id == agg.id
 
 
 async def test_async_repo_get_seen_is_correct_when_not_found(
     mock_uuid: UUID,
-    mock_aggregate: AggregateRoot,
     mock_async_repository_get: AsyncRepository,
 ):
     """Verifies AsyncRepository get doesn't affect seen when agg not found."""
@@ -262,11 +267,12 @@ async def test_mock_async_repo_add_seen_is_correct(
 ):
     """Verifies AsyncRepository add invokes the seen response."""
 
-    # Invoke add to setup testcase
+    # invoke add to setup testcase
     await mock_async_repository_add.add(mock_aggregate)
-    # Test that only one agg has been seen, and it is the aggregate added
+    # test that only one agg has been seen, and it is the aggregate added
     assert len(mock_async_repository_add.seen) == 1
     assert mock_aggregate.id == mock_async_repository_add.seen.pop().id
+
 
 
 async def test_mock_async_repo_update(
@@ -326,4 +332,5 @@ async def test_mock_async_repo_get_returns_correct_aggregate(
     # Get the aggregate with the given id
     agg = await mock_async_repository_get.get(id=mock_aggregate.id)
     # Assert the returned id matches the given id
+    assert agg is not None
     assert agg.id == mock_aggregate.id

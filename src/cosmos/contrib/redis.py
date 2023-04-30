@@ -4,6 +4,7 @@ import os
 from typing import Any, Dict, Protocol, Tuple, Type
 
 from redis import Redis
+from structlog import get_logger
 
 from cosmos.domain import (
     Consumer,
@@ -15,7 +16,6 @@ from cosmos.domain import (
 
 from cosmos.message_bus import MessageBus
 from cosmos.unit_of_work import AsyncUnitOfWorkFactory
-from cosmos.utils import get_logger
 
 logger = get_logger()
 
@@ -62,7 +62,7 @@ def redis_publisher(client: RedisClient) -> EventPublish:
 
         try:
             response = client.xadd(
-                name=event.stream,
+                name=event.name,
                 fields={"values": json.dumps({values})},
             )
 
@@ -151,7 +151,7 @@ async def loop_event_consumer(
     while True:
         try:
             async with await uow_factory.get_uow() as uow:
-                consumer = await uow.repository.get(id=consumer.id)
+                consumer = await uow.repository.get(id=consumer.id)  # type: ignore
 
                 consumer_response = await event_consume(consumer=consumer)
 
