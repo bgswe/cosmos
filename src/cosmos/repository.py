@@ -29,7 +29,7 @@ class AsyncRepository(Generic[T]):
 
         self._seen.append(aggregate)
 
-    async def get(self, id: UUID) -> T:
+    async def get(self, id: UUID) -> T|None:
         """Call subclass _get implementation and note the aggregate as seen.
 
         :param: id -> the UUID of Aggregate to get
@@ -79,7 +79,7 @@ class AsyncRepository(Generic[T]):
 
         self._mark_seen(aggregate=aggregate)
 
-    async def _get(self, id: UUID) -> T:
+    async def _get(self, id: UUID) -> T|None:
         """Required for repository implementation to get an instance type 'T'."""
 
         raise NotImplementedError

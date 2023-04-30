@@ -43,16 +43,13 @@ class AsyncUnitOfWork(Protocol[T]):
     def repository(self) -> AsyncRepository:
         ...
 
-    def collect_events(self) -> Iterator[Event]:
+    def collect_events(self) -> Iterable[Event]:
         ...
 
     async def __aenter__(self) -> AsyncUnitOfWork[T]:
         ...
 
     async def __aexit__(self, *args):
-        ...
-
-    async def transaction(self) -> Any:
         ...
 
 
