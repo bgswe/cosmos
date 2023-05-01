@@ -217,6 +217,7 @@ class Message(BaseModel):
     class Config:
         use_enum_values = True
 
+    @property
     def name(self) -> str:
         """..."""
 
