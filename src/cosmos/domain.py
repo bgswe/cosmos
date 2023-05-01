@@ -217,14 +217,16 @@ class Message(BaseModel):
     class Config:
         use_enum_values = True
 
-
-class Event(Message):
-    """Base Event of our domain model."""
-
     def name(self) -> str:
         """..."""
 
         return type(self).__name__
+
+
+class Event(Message):
+    """Base Event of our domain model."""
+
+    ...
 
 
 class Command(Message):
