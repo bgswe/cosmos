@@ -160,15 +160,19 @@ class AggregateRoot(Entity, ABC):
         self._events = []
 
     @property
-    def events(self) -> List[Event]:
-        """Simple public getter for events."""
-
-        return self._events
+    def has_events(self) -> bool:
+        return not not self._events
 
     def new_event(self, event: Event):
         """Append a new event to the internal list of events."""
 
         self._events.append(event)
+
+    @property
+    def events(self) -> List[Event]:
+        """Simple public getter for events."""
+
+        return self._events
 
 
 class Consumer(AggregateRoot):

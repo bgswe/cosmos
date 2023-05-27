@@ -1,14 +1,14 @@
 from __future__ import annotations
+from abc import ABC
 
 from typing import (
     Any,
     Generic,
     Iterable,
-    Iterator,
+    Dict,
     Protocol,
     Type,
     TypeVar,
-    runtime_checkable,
 )
 
 from cosmos.domain import AggregateRoot, Event
@@ -26,8 +26,7 @@ class Collect(Protocol):
         ...
 
 
-@runtime_checkable
-class AsyncUnitOfWork(Protocol[T]):
+class AsyncUnitOfWork(ABC):
     """A class dedicated to defining what one 'unit' of work is.
 
     This is an implementation of the unit of work pattern. Its core
@@ -36,21 +35,18 @@ class AsyncUnitOfWork(Protocol[T]):
     that point shall be reverted.
     """
 
-    def __init__(self, repository: AsyncRepository, collect: Collect):
-        ...
-
-    @property
-    def repository(self) -> AsyncRepository:
-        ...
+    repository: AsyncRepository
 
     def collect_events(self) -> Iterable[Event]:
-        ...
+        for aggregate in self.repository.seen:
+            while aggregate.has_events:
+                yield aggregate.get_events().pop(0)
 
     async def __aenter__(self) -> AsyncUnitOfWork[T]:
-        ...
+        raise NotImplementedError
 
     async def __aexit__(self, *args):
-        ...
+        raise NotImplementedError
 
 
 class AsyncUnitOfWorkFactory(Generic[T]):
@@ -60,25 +56,22 @@ class AsyncUnitOfWorkFactory(Generic[T]):
         self,
         uow_cls: Type[AsyncUnitOfWork[T]],
         repository_cls: Type[AsyncRepository[T]],
-        collect: Collect|None = None,
+        uow_kwargs: Dict[Any, Any] | None = None,
+        repository_kwargs: Dict[Any, Any] | None = None,
     ):
         """Takes a uow class and repo class, and saves for use in uow creation."""
 
         self._uow_cls = uow_cls
+        self._uow_kwargs = uow_kwargs if uow_kwargs else {}
+        self._repository_kwargs = repository_kwargs if repository_kwargs else {}
         self._repo_cls = repository_cls
-        self._collect = collect
 
-    async def get_uow(self) -> AsyncUnitOfWork:
+    def get_uow(self) -> AsyncUnitOfWork:
         """Create and return a new uow instance."""
 
         uow = self._uow_cls(
-            repository=self._repo_cls(),
-            collect=self._collect,  # type: ignore
-        )
-
-        connect = getattr(uow, "connect", None)
-
-        if callable(connect):
-            await uow.connect()  # type: ignore
+            repository=self._repo_cls(**self._repository_kwargs),
+            **self._uow_kwargs,
+        ) 
 
         return uow

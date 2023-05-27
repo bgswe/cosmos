@@ -1,24 +1,27 @@
 from abc import ABC
 
-from asyncpg import connect
-from asyncpg.transaction import Transaction
+from asyncpg import Connection
+
+from cosmos.repository import AsyncRepository
+from cosmos.unit_of_work import AsyncUnitOfWork
 
 
-class AsyncUnitOfWorkPostgres(ABC):
-    async def transaction(self) -> Transaction:
-        """ABC with transaction implementation for postgres.
+class AsyncPGRepository(AsyncRepository, ABC):
+    def __init__(self, connection: Connection):
+        self.connection = connection
 
-        The connection uses default environment variables to
-        configure the connection string.
-        They include (default):
-            PGHOST     (localhost)
-            PGPORT     (5432)
-            PGUSER     (OS SYSTEM USER)
-            PGDATABASE (PGUSER)
-            PGPASSWORD
-        """
+        super().__init__()
 
-        if not self._connection:  # type: ignore
-            self._connection = await connect()
 
-        return self._connection.transaction()
+class AsyncUnitOfWorkPostgres(AsyncUnitOfWork):
+    def __init__(self, connection: Connection, repository: AsyncPGRepository):
+        self.connection = connection
+        self.repository = repository
+
+    async def __aenter__(self, *args, **kwargs) -> AsyncUnitOfWork:
+        self.transaction = self.connection.transaction()
+        await self.transaction.__aenter__(*args, **kwargs)
+        return self
+
+    async def __aexit__(self, *args, **kwargs):
+        return await self.transaction.__aexit__(*args, **kwargs)
