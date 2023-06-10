@@ -6,7 +6,7 @@ from structlog import get_logger
 from cosmos.domain import AggregateRoot
 from cosmos.repository import AsyncRepository
 from cosmos.unit_of_work import AsyncUnitOfWork, AsyncUnitOfWorkFactory
-from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork, mock_collect
+from tests.conftest import MockAsyncRepository, MockAsyncUnitOfWork
 
 T = TypeVar("T", bound=AggregateRoot)
 
@@ -29,7 +29,6 @@ async def test_async_uow_factory_initializes():
     uow_factory = AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
-        collect=mock_collect,
     )
 
     assert uow_factory is not None
@@ -40,7 +39,6 @@ def uow_factory() -> AsyncUnitOfWorkFactory:
     return AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
         repository_cls=MockAsyncRepository,
-        collect=mock_collect,
     )
 
 
@@ -58,7 +56,7 @@ async def test_async_uow_factory_get_uow_returns_uow_with_valid_repo(
 ):
     """Verifies AsyncUnitOfWorkFactory get_uow returns uow w/ valid AsyncRepository."""
 
-    uow = await uow_factory.get_uow()
+    uow = uow_factory.get_uow()
 
     assert isinstance(uow.repository, AsyncRepository)
 
@@ -68,5 +66,5 @@ async def test_async_uow_factory_get_uow_returns_valid_uow(
 ):
     """Verify the returned uow is a valid context manager."""
 
-    async with await uow_factory.get_uow() as thing:
+    async with uow_factory.get_uow() as thing:
         assert thing is None

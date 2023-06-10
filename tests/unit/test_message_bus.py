@@ -34,7 +34,6 @@ def empty_message_bus() -> MessageBus:
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
     )
 
@@ -85,7 +84,6 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
     )
 
@@ -112,7 +110,6 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
         # mock_event is from stream MockA, so we handle MockB only
         event_handlers={"MockBEvent": [handler]},
@@ -137,7 +134,6 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
         event_handlers={"MockEventA": [handler]},
     )
@@ -161,7 +157,6 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
         event_handlers={"MockEventA": [handler_a, handler_b]},
     )
@@ -194,7 +189,6 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
         event_handlers=event_handlers,
     )
@@ -246,7 +240,6 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect_spoofed_event,
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
@@ -304,7 +297,6 @@ async def test_message_bus_handle_calls_correct_event_sequence(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect_spoofed_event_sequence,
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
@@ -372,7 +364,6 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             repository_cls=MockAsyncRepository,
-            collect=mock_collect,
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler

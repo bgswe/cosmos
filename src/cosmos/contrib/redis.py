@@ -99,7 +99,7 @@ async def consume(
     )
 
     # Create consumer sets representing consumer config, and current consumer state
-    async with await uow_factory.get_uow() as uow:
+    async with uow_factory.get_uow() as uow:
         current_consumer_names = {c.name for c in await uow.repository.get_list()}
 
     # Represent the new consumers we must now create
@@ -114,12 +114,12 @@ async def consume(
         )
 
     # Create the new consumers if necessary
-    async with await uow_factory.get_uow() as uow:
+    async with uow_factory.get_uow() as uow:
         for c in created_consumers:
             await uow.repository.add(c)
 
     # Get all consumers from repo
-    async with await uow_factory.get_uow() as uow:
+    async with uow_factory.get_uow() as uow:
         consumers = await uow.repository.get_list()
 
     # Create an endlessly-looped event consumer for each individual consumer

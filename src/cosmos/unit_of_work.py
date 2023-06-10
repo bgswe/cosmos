@@ -37,12 +37,15 @@ class AsyncUnitOfWork(ABC):
 
     repository: AsyncRepository
 
+    def __init__(self, *args, **kwargs) -> None:
+        ...
+
     def collect_events(self) -> Iterable[Event]:
         for aggregate in self.repository.seen:
             while aggregate.has_events:
                 yield aggregate.get_events().pop(0)
 
-    async def __aenter__(self) -> AsyncUnitOfWork[T]:
+    async def __aenter__(self) -> AsyncUnitOfWork:
         raise NotImplementedError
 
     async def __aexit__(self, *args):
@@ -54,8 +57,8 @@ class AsyncUnitOfWorkFactory(Generic[T]):
 
     def __init__(
         self,
-        uow_cls: Type[AsyncUnitOfWork[T]],
-        repository_cls: Type[AsyncRepository[T]],
+        uow_cls: Type[AsyncUnitOfWork],
+        repository_cls: Type[AsyncRepository],
         uow_kwargs: Dict[Any, Any] | None = None,
         repository_kwargs: Dict[Any, Any] | None = None,
     ):

@@ -153,7 +153,7 @@ class MessageBus:
                 # failed handlers if necessary. More needed?
                 log = logger.bind(
                     event_id=event.message_id,
-                    exception=e,
+                    exception=str(e),
                     traceback=tracebacks.extract(type(e), e, e.__traceback__),
                 )
                 log.error("raised exception during event handling")
