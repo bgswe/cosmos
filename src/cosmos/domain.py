@@ -229,13 +229,19 @@ class Message(BaseModel):
 
 
 class Event(Message):
-    """Base Event of our domain model."""
+    """Base Event of our domain model"""
 
     ...
 
 
 class Command(Message):
-    """Base Command message type created for extension."""
+    """Base Command message type created for extension"""
+
+    ...
+
+
+class AuthenticatedCommand(Message):
+    """Command message which requires the invokee to be authenticated"""
 
     client_id: UUID  # client invoking command
 
