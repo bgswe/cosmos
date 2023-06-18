@@ -14,9 +14,8 @@ class AsyncPGRepository(AsyncRepository, ABC):
 
 
 class AsyncUnitOfWorkPostgres(AsyncUnitOfWork):
-    def __init__(self, connection: Connection, repository: AsyncPGRepository):
+    def __init__(self, connection: Connection):
         self.connection = connection
-        self.repository = repository
 
     async def __aenter__(self, *args, **kwargs) -> AsyncUnitOfWork:
         self.transaction = self.connection.transaction()

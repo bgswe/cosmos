@@ -43,9 +43,9 @@ class MessageBus:
     def __init__(
         self,
         uow_factory: AsyncUnitOfWorkFactory,
-        event_publish: EventPublish | None=None,
-        event_handlers: Dict[str, List[EventHandler]] | None=None,
-        command_handlers: Dict[Type[Command], CommandHandler] | None=None,
+        event_publish: EventPublish | None = None,
+        event_handlers: Dict[str, List[EventHandler]] | None = None,
+        command_handlers: Dict[Type[Command], CommandHandler] | None = None,
     ):
         if event_handlers is None:
             event_handlers = {}
@@ -55,8 +55,10 @@ class MessageBus:
 
         self._uow_factory = uow_factory
         self._event_handlers = event_handlers
-        self._command_handlers = command_handlers
-        self._event_publish = event_publish
+
+        # TODO: Validate handlers
+        self._command_handlers = command_handlers  # should be command.name:Handler
+        self._event_publish = event_publish  # should be event.name:List[Handler]
 
         self._queue: Dict[UUID, List[Message]] = {}
 
@@ -140,7 +142,7 @@ class MessageBus:
             await self._event_publish(event=event)
 
         # Invoke all configured handlers with the given event
-        for handler in self._event_handlers.get(type(event).__name__, []):
+        for handler in self._event_handlers.get(event.name, []):
             try:
                 # Create new UnitOfWork for use in handler
                 uow = self._uow_factory.get_uow()
@@ -191,7 +193,7 @@ class MessageBus:
                 configured_handlers=self._command_handlers.keys(),
             )
             log.error("command doesn't have a configured handler")
-            
+
         except Exception as e:
             log = log.bind(
                 command_name=command.name,
