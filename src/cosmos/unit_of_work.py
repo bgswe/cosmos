@@ -40,10 +40,8 @@ class AsyncUnitOfWork(ABC):
     def __init__(self, *args, **kwargs) -> None:
         ...
 
-    def context(self, repository: AsyncRepository):
-        self.repository = repository
-
-        return self
+    def context(self, *args, **kwargs) -> AsyncUnitOfWork:
+        ...
 
     def collect_events(self) -> Iterable[Event]:
         for aggregate in self.repository.seen:

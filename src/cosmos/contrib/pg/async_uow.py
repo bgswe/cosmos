@@ -1,4 +1,5 @@
 from abc import ABC
+from typing import Type
 
 from asyncpg import Connection
 
@@ -16,6 +17,11 @@ class AsyncPGRepository(AsyncRepository, ABC):
 class AsyncUnitOfWorkPostgres(AsyncUnitOfWork):
     def __init__(self, connection: Connection):
         self.connection = connection
+
+    def context(self, Repository: Type[AsyncPGRepository]):
+        self.repository = Repository(connection=self.connection)
+
+        return self
 
     async def __aenter__(self, *args, **kwargs) -> AsyncUnitOfWork:
         self.transaction = self.connection.transaction()
