@@ -41,15 +41,15 @@ class DomainObject(ABC):
     def to_dict(self):
         """Basic interpretation of self as a dict."""
 
-        d={k: getattr(self, k) for k in self._initial_properties}
+        d = {k: getattr(self, k) for k in self._initial_properties}
         print(d)
         return d
-    
+
     def __repr__(self):
         """Use dictionary representation as the default."""
 
         return str(self.to_dict())
-        
+
 
 class ValueObject(DomainObject):
     def __eq__(self, other: Any) -> bool:
@@ -64,7 +64,7 @@ class ValueObject(DomainObject):
 
         # compare shallow equality for property dicts
         return self._initial_properties == other._initial_properties
-    
+
 
 class Entity(DomainObject, ABC):
     _id: UUID
@@ -83,7 +83,7 @@ class Entity(DomainObject, ABC):
         elif type(uuid) != UUID:
             try:
                 uuid = UUID(uuid)  # cast to UUID
-            except (ValueError, TypeError):  
+            except (ValueError, TypeError):
                 uuid = uuid4()  # malformed id
 
         kwargs["_id"] = uuid
@@ -110,13 +110,13 @@ class Entity(DomainObject, ABC):
         """Implemented Entities require the implementation of a create method."""
 
         raise NotImplementedError
-    
+
     @property
     def initial_properties(self) -> Dict[str, Any]:
         """Simple public getter for initialized values."""
 
         return self._initial_properties
-    
+
     @property
     def property_changes(self) -> Dict[str, Any]:
         """Calculates the diff between the init state and current state."""
@@ -163,16 +163,15 @@ class AggregateRoot(Entity, ABC):
     def has_events(self) -> bool:
         return not not self._events
 
+    def get_events(self) -> List[Event]:
+        """Simple public getter for events."""
+
+        return self._events
+
     def new_event(self, event: Event):
         """Append a new event to the internal list of events."""
 
         self._events.append(event)
-
-    @property
-    def events(self) -> List[Event]:
-        """Simple public getter for events."""
-
-        return self._events
 
 
 class Consumer(AggregateRoot):
@@ -187,7 +186,7 @@ class Consumer(AggregateRoot):
     def create(  # type: ignore
         cls,
         *,
-        id: UUID|None = None,
+        id: UUID | None = None,
         stream: str,
         name: str,
         retroactive: bool = True,
@@ -264,8 +263,6 @@ class EventConsume(Protocol):
     """Callback protocall for consuming events from the stream bus."""
 
     async def __call__(self, consumer: Consumer) -> Tuple[Event, str] | None:
-        
-        
         ...
 
 

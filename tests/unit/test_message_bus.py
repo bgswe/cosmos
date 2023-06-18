@@ -357,7 +357,7 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
     _, mock_b_handler = mock_event_handler_factory.get()
     mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
 
-    mock_events, mock_collect = mock_collect_spoofed_event_sequence_many
+    mock_events = mock_collect_spoofed_event_sequence_many
 
     bus = MessageBus(
         event_publish=mock_publish,

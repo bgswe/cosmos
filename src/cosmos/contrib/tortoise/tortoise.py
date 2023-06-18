@@ -12,16 +12,6 @@ from cosmos.unit_of_work import Collect
 T = TypeVar("T", bound=AggregateRoot)
 
 
-# EVAL: Do we need to expose collection here? I think this might be
-# a 'Zero Value-Added' complexitiy.
-def simple_collect(repository: AsyncRepository):
-    """Default collection implementation."""
-
-    for aggregate in repository.seen:
-        while aggregate.has_events:
-            yield aggregate.get_events().pop(0)
-
-
 async def tortoise_connect(
     db_url: str,
     models: List[str],
@@ -44,13 +34,7 @@ class TortoiseUOW(AsyncUnitOfWorkPostgres, Generic[T]):
     def __init__(
         self,
         repository: AsyncRepository[T],
-        collect: Collect |None= None,
     ):
-        if collect is not None:
-            self._collect = collect
-        else:
-            self._collect = simple_collect
-
         self._repository = repository
 
     async def connect(self):
