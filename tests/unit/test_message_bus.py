@@ -361,10 +361,7 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
 
     bus = MessageBus(
         event_publish=mock_publish,
-        uow_factory=AsyncUnitOfWorkFactory(
-            uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
-        ),
+        uow_factory=AsyncUnitOfWorkFactory(uow_cls=MockAsyncUnitOfWork),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
             "MockEventA": [mock_a_handler],

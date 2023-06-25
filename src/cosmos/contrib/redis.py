@@ -1,5 +1,5 @@
+import ast
 import asyncio
-import json
 import os
 from typing import Any, Dict, Protocol, Tuple, Type
 
@@ -53,20 +53,18 @@ def get_redis_client() -> Redis:
 
 
 def redis_publisher(client: RedisClient) -> EventPublish:
-    def publish(event: Event):
-        """EventPublish implementation for the redis stream stack."""
+    async def publish(event: Event):
+        """EventPublish implementation for the redis stream stack"""
 
         values = event.dict()
-
         log = logger.bind(event=values)
 
         try:
-            response = client.xadd(
+            client.xadd(
                 name=event.name,
-                fields={"values": json.dumps({values})},
+                fields={"values": str(values)},
             )
 
-            log = log.bind(publish_response=response)
             log.info("successfully published event to redis stream")
 
         except Exception as e:
@@ -85,7 +83,7 @@ async def consume(
     event_consume: EventConsume,
     event_publish: EventPublish,
 ):
-    """Consumes events defined in config from redis streams."""
+    """Consumes events defined in config from redis streams"""
 
     # Create an event handler dict from the DomainConsumerConfig
     event_handlers = {}
@@ -172,7 +170,9 @@ async def loop_event_consumer(
             pass
 
 
-async def redis_consumer(client: RedisClient, stream_to_event_map: Dict[str, Type[Event]]) -> EventConsume:
+async def redis_consumer(
+    client: RedisClient, stream_to_event_map: Dict[str, Type[Event]]
+) -> EventConsume:
     """Closure to provide redis client wh/ allows EventConsume to be used as value."""
 
     async def read_stream(consumer: Consumer) -> Tuple[Event, str] | None:
@@ -201,7 +201,7 @@ async def redis_consumer(client: RedisClient, stream_to_event_map: Dict[str, Typ
 
                     # Hydrates the mapped event type w/ values from the stream
                     hydrated_event = stream_to_event_map[stream](
-                        **json.loads(values["values"])
+                        **ast.literal_eval(values["values"])
                     )
 
                     # Update latest read message.
