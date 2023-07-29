@@ -239,6 +239,13 @@ class Command(Message):
     ...
 
 
+class CommandComplete(Event):
+    """This is an event which is emitted upon completion of command handling"""
+
+    command_name: str
+    command_id: UUID
+
+
 class AuthenticatedCommand(Message):
     """Command message which requires the invokee to be authenticated"""
 
@@ -260,7 +267,7 @@ class EventPublish(Protocol):
 
 
 class EventConsume(Protocol):
-    """Callback protocall for consuming events from the stream bus."""
+    """Callback protocall for consuming events from the stream bus"""
 
     async def __call__(self, consumer: Consumer) -> Tuple[Event, str] | None:
         ...

@@ -6,6 +6,7 @@ from structlog import get_logger, tracebacks
 
 from cosmos.domain import (
     Command,
+    CommandComplete,
     Event,
     EventPublish,
     Message,
@@ -182,7 +183,15 @@ class MessageBus:
             uow = self._uow_factory.get_uow()
             await handler(uow=uow, command=command)
 
-            # Append all raised events to the message queue
+            completion_event = CommandComplete(
+                command_id=command.message_id,
+                command_name=command.name,
+            )
+
+            # append command completion event, for those who may be waiting
+            self._queue[seed_id].append(completion_event)
+
+            # append all raised events to the message queue
             self._queue[seed_id].extend(uow.collect_events())
 
         # TODO: Include the information required to possibly rerun
