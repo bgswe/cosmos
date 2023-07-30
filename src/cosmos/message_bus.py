@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime as dt
 from typing import Dict, List, Protocol, Type
 from uuid import UUID
 
@@ -186,6 +187,7 @@ class MessageBus:
             completion_event = CommandComplete(
                 command_id=command.message_id,
                 command_name=command.name,
+                timestamp=dt.now(),
             )
 
             # append command completion event, for those who may be waiting

@@ -242,6 +242,7 @@ class Command(Message):
 class CommandComplete(Event):
     """This is an event which is emitted upon completion of command handling"""
 
+    timestamp: dt
     command_name: str
     command_id: UUID
 
