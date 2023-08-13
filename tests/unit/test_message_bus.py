@@ -21,16 +21,9 @@ from tests.conftest import (
 logger = get_logger()
 
 
-async def mock_publish(event: Event):
-    logger.bind(event_dict=event.dict())
-
-    logger.debug("MockPublisher.publish")
-
-
 @pytest.fixture
 def empty_message_bus() -> MessageBus:
     return MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
         ),
@@ -79,7 +72,6 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
     """MessageBus requires at minimum domain, and a UnitOfWorkFactory."""
 
     MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -105,7 +97,6 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -129,7 +120,6 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
     invocation_flag, handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -152,7 +142,6 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
     invocation_flag_b, handler_b = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -184,7 +173,6 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_handlers[event] = [handler[1] for handler in handlers]
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -234,7 +222,6 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_b_handler_invoked, mock_b_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -262,7 +249,6 @@ async def test_message_bus_handle_calls_correct_event_sequence(
     mock_c_handler_invoked, mock_c_handler = mock_event_handler_factory.get()
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
@@ -329,7 +315,6 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
     mock_events = mock_collect_spoofed_event_sequence_many
 
     bus = MessageBus(
-        event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
             uow_kwargs={"repository": MockAsyncRepository()},
