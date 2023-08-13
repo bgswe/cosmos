@@ -46,7 +46,6 @@ class MessageBus:
     def __init__(
         self,
         uow_factory: AsyncUnitOfWorkFactory,
-        event_publish: EventPublish | None = None,
         event_handlers: Dict[str, List[EventHandler]] | None = None,
         command_handlers: Dict[Type[Command], CommandHandler] | None = None,
     ):
@@ -57,11 +56,10 @@ class MessageBus:
             command_handlers = {}
 
         self._uow_factory = uow_factory
-        self._event_handlers = event_handlers
 
         # TODO: Validate handlers
         self._command_handlers = command_handlers  # should be command.name:Handler
-        self._event_publish = event_publish  # should be event.name:List[Handler]
+        self._event_handlers = event_handlers
 
         self._queue: Dict[UUID, List[Message]] = {}
 
@@ -127,22 +125,12 @@ class MessageBus:
     async def _handle_event(self, seed_id: UUID, event: Event):
         """Coordinates lifecycle of event handling.
 
-        This method is responsible for publishing the event if it is raised
-        internally, invoking configured handlers for the specific
-        event stream, and collecting any events raised as part of handling
+        This method is responsible invoking configured handlers for the
+        specific event, and collecting any events raised as part of handling
         the given event.
 
         :param: event -> the given event object to handle
         """
-
-        # Only publish events that originate inside the domain, otherwise
-        # we run the chance of republishing a previously published event.
-        # Handlers should be idempotent, but it still pollutes message broker.
-        if self._event_publish:
-            # TODO: What if this fails?
-            # Is it okay to commit failed publishes to the DB, and still
-            # handle the event internally?
-            await self._event_publish(event=event)
 
         # Invoke all configured handlers with the given event
         for handler in self._event_handlers.get(event.name, []):
