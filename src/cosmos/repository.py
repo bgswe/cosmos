@@ -29,7 +29,7 @@ class AsyncRepository(Generic[T]):
 
         self._seen.append(aggregate)
 
-    async def get(self, id: UUID) -> T|None:
+    async def get(self, id: UUID) -> T | None:
         """Call subclass _get implementation and note the aggregate as seen.
 
         :param: id -> the UUID of Aggregate to get
@@ -59,42 +59,24 @@ class AsyncRepository(Generic[T]):
 
         return agg_list
 
-    async def add(self, aggregate: T):
-        """Call subclass _add implementation and note the aggregate as seen.
-
-        :param: aggregate -> an aggregate instance to be newly persisted
-        """
+    async def save(self, aggregate: T):
+        """Call subclass _save implementation and note the aggregate as seen"""
 
         await self._add(aggregate)
 
         self._mark_seen(aggregate=aggregate)
 
-    async def update(self, aggregate: T):
-        """Call subclass _update implementation and note the aggregate as seen.
-
-        :param: aggregate -> an aggregate instance to update the values of
-        """
-
-        await self._update(aggregate)
-
-        self._mark_seen(aggregate=aggregate)
-
-    async def _get(self, id: UUID) -> T|None:
-        """Required for repository implementation to get an instance type 'T'."""
+    async def _get(self, id: UUID) -> T | None:
+        """Required for repository implementation to get an instance type 'T'"""
 
         raise NotImplementedError
 
     async def _get_list(self, **kwargs) -> List[T]:
-        """Required for repository implementation to get a list of type 'T'."""
+        """Required for repository implementation to get a list of type 'T'"""
 
         raise NotImplementedError
 
-    async def _add(self, aggregate: T):
-        """Required for repository implementation to add an instance of type 'T'."""
-
-        raise NotImplementedError
-
-    async def _update(self, aggregate: T):
-        """Required for repository implementation to update an instances of type 'T'."""
+    async def _save(self, aggregate: T):
+        """Required for repository implementation to persist an instance of type 'T'"""
 
         raise NotImplementedError
