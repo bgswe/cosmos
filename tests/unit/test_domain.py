@@ -10,7 +10,7 @@ from tests.conftest import MockAggregate
 
 class MockEntity(Entity):
     @classmethod
-    def create(cls, id: UUID|None = None):
+    def create(cls, id: UUID | None = None):
         return Entity.create_entity(
             cls=cls,
             id=id,
@@ -20,6 +20,7 @@ class MockEntity(Entity):
 @pytest.fixture
 def mock_entity() -> MockEntity:
     return MockEntity.create(id=get_uuid())
+
 
 @pytest.fixture
 def mock_entity_no_id() -> MockEntity:
@@ -108,63 +109,6 @@ def test_aggregate_new_event_adds_to_events_list(
     assert event_from_events is mock_event_a
 
 
-def test_initialized_values_are_correct_immediately_after_init():
-    """Verifies captured values on init are correct."""
-
-    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
-
-    agg = MockAggregateWithAttrs.create(**attrs)
-
-    expected_attrs = {}
-    expected_attrs.update(agg.initial_properties)
-    
-    expected_attrs.pop("created_at")
-    expected_attrs.pop("updated_at")
-
-    assert attrs == expected_attrs 
-
-
-def test_initialized_values_are_correct_after_changes():
-    """Verifies init values are still correct after subsequent attr changes."""
-
-    attrs = {"id": get_uuid(), "name": "Some Name", "phone": None}
-
-    agg = MockAggregateWithAttrs.create(**attrs)
-
-    new_name = "Other Name"
-    agg.name = new_name
-    assert agg.name == new_name
-
-    new_phone = "(555)555-5555"
-    agg.phone = new_phone
-    assert agg.phone == new_phone
-
-    expected_attrs = {}
-    expected_attrs.update(agg.initial_properties)
-    
-    expected_attrs.pop("created_at")
-    expected_attrs.pop("updated_at")
-
-    assert attrs == expected_attrs
-
-
-def test_property_changes_is_empty_when_no_changes(mock_aggregate_with_attrs: AggregateRoot):
-    """Verifies changed values is empty when no changes are made."""
-    print(mock_aggregate_with_attrs.property_changes)
-    assert mock_aggregate_with_attrs.property_changes == {}
-
-
-def test_change_one_value_verify_property_changes_is_correct(
-    mock_aggregate_with_attrs: MockAggregateWithAttrs,
-):
-    """..."""
-
-    new_phone = "(111)111-1111"
-    mock_aggregate_with_attrs.phone = new_phone
-
-    assert mock_aggregate_with_attrs.property_changes == {"phone": new_phone}
-
-
 def test_create_entity_uses_id_when_given():
     id = get_uuid()
     entity = Entity.create_entity(MockEntity, id=id)
@@ -186,3 +130,40 @@ def test_create_entity_returns_correct_instance_type():
     entity = Entity.create_entity(MockEntity)
 
     assert type(entity) == MockEntity
+
+
+#########
+
+
+def test_entity_changed():
+    # mock aggregate
+    class SomeEntity(AggregateRoot):
+        @classmethod
+        def create(
+            cls,
+            *,
+            id: UUID = None,
+            some_attr: str,
+        ):
+            return Entity.create_entity(
+                cls=cls,
+                id=id,
+                some_attr=some_attr,
+            )
+
+    # create an instance
+    created_se = SomeEntity.create(
+        some_attr="some_attr",
+    )
+
+    # mock repository hydration
+    se = SomeEntity(**created_se.to_dict())
+
+    assert not se._changed
+    assert se._changed_attrs.get("some_attr") is None
+
+    se.some_attr = "SOME_ATTR"
+
+    assert se._changed
+    assert se._changed_attrs.get("some_attr") is not None
+    assert se._changed_attrs.get("some_attr") == "SOME_ATTR"

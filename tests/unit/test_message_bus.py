@@ -33,7 +33,6 @@ def empty_message_bus() -> MessageBus:
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
         ),
     )
 
@@ -63,7 +62,7 @@ class MockEventHandlerFactory:
 
             was_invoked.mark_invoked()
 
-            log = logger.bind(event_dict=event.dict())
+            log = logger.bind(event_dict=event.model_dump())
             log.debug("mock_event_handler invoked")
 
         return was_invoked, mock_event_handler
@@ -83,7 +82,7 @@ def test_message_bus_most_basic_initialization_doesnt_raise_exception():
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
     )
 
@@ -109,7 +108,7 @@ async def test_message_bus_event_with_alternate_event_handler_doesnt_invoke_hand
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         # mock_event is from stream MockA, so we handle MockB only
         event_handlers={"MockBEvent": [handler]},
@@ -133,7 +132,7 @@ async def test_message_bus_simple_event_handler_invokes_correct_handler(
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         event_handlers={"MockEventA": [handler]},
     )
@@ -156,7 +155,7 @@ async def test_message_bus_multiple_event_handlers_invokes_list_of_handlers(
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         event_handlers={"MockEventA": [handler_a, handler_b]},
     )
@@ -188,7 +187,7 @@ async def test_message_bus_event_handler_invokes_only_associated_handlers(
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         event_handlers=event_handlers,
     )
@@ -229,7 +228,6 @@ def mock_collect_spoofed_event(mock_b_event: Event) -> Collect:
 async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
-    mock_collect_spoofed_event: Collect,
 ):
     """Verifies the message bus correctly handles a message's downstream events."""
 
@@ -239,7 +237,7 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
@@ -254,38 +252,9 @@ async def test_message_bus_calls_handler_for_event_raised_in_first_handler(
     assert mock_b_handler_invoked.invoked
 
 
-@pytest.fixture
-def mock_collect_spoofed_event_sequence(
-    mock_b_event: Event,
-    mock_c_event: Event,
-) -> Collect:
-    count = 0
-
-    def mock_collect(repository: AsyncRepository) -> Iterable[Event]:
-        """Simple test collect that returns the seen aggregates in a new list."""
-
-        # NOTE: This is a relatively easy way to spoof a handler raising an event
-        # thorough handling. There may be other/better ways to do this, possibly
-        # through the repo itself.
-        nonlocal count
-
-        match count:
-            case 0:
-                count += 1
-                return [mock_b_event]  # simulate MockB raised in MockA handler
-            case 1:
-                count += 1
-                return [mock_c_event]  # simulate MockC raised in MockB handler
-
-        return [*repository.seen]
-
-    return mock_collect
-
-
 async def test_message_bus_handle_calls_correct_event_sequence(
     mock_event_a: Event,
     mock_event_handler_factory: MockEventHandlerFactory,
-    mock_collect_spoofed_event_sequence: Collect,
 ):
     """..."""
 
@@ -296,7 +265,7 @@ async def test_message_bus_handle_calls_correct_event_sequence(
         event_publish=mock_publish,
         uow_factory=AsyncUnitOfWorkFactory(
             uow_cls=MockAsyncUnitOfWork,
-            repository_cls=MockAsyncRepository,
+            uow_kwargs={"repository": MockAsyncRepository()},
         ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
@@ -361,7 +330,10 @@ async def test_message_bus_handle_calls_correct_event_sequence_many(
 
     bus = MessageBus(
         event_publish=mock_publish,
-        uow_factory=AsyncUnitOfWorkFactory(uow_cls=MockAsyncUnitOfWork),
+        uow_factory=AsyncUnitOfWorkFactory(
+            uow_cls=MockAsyncUnitOfWork,
+            uow_kwargs={"repository": MockAsyncRepository()},
+        ),
         event_handlers={
             # We don't require the invocation flag for this event, just grab a handler
             "MockEventA": [mock_a_handler],

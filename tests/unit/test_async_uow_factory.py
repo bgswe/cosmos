@@ -28,7 +28,6 @@ async def test_async_uow_factory_initializes():
 
     uow_factory = AsyncUnitOfWorkFactory(
         uow_cls=MockAsyncUnitOfWork,
-        repository_cls=MockAsyncRepository,
     )
 
     assert uow_factory is not None
@@ -37,8 +36,7 @@ async def test_async_uow_factory_initializes():
 @pytest.fixture
 def uow_factory() -> AsyncUnitOfWorkFactory:
     return AsyncUnitOfWorkFactory(
-        uow_cls=MockAsyncUnitOfWork,
-        repository_cls=MockAsyncRepository,
+        uow_cls=MockAsyncUnitOfWork, uow_kwargs={"repository": MockAsyncRepository()}
     )
 
 

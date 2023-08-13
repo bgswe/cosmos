@@ -8,6 +8,7 @@ from structlog import get_logger, tracebacks
 from cosmos.domain import (
     Command,
     CommandComplete,
+    CommandCompletionStatus,
     Event,
     EventPublish,
     Message,
@@ -188,6 +189,7 @@ class MessageBus:
                 command_id=command.message_id,
                 command_name=command.name,
                 timestamp=dt.now(),
+                status=CommandCompletionStatus.SUCCESS,
             )
 
             # append command completion event, for those who may be waiting
