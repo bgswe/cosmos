@@ -138,8 +138,6 @@ class MessageBus:
                 # Create new UnitOfWork for use in handler
                 uow = self._uow_factory.get_uow()
                 await handler(uow=uow, event=event)
-                # Append all raised events to the message queue
-                self._queue[seed_id].extend(uow.collect_events())
 
             except Exception as e:
                 # Include the information required to possibly rerun
@@ -182,9 +180,6 @@ class MessageBus:
 
             # append command completion event, for those who may be waiting
             self._queue[seed_id].append(completion_event)
-
-            # append all raised events to the message queue
-            self._queue[seed_id].extend(uow.collect_events())
 
         # TODO: Include the information required to possibly rerun
         # failed handlers if necessary. More needed?
