@@ -62,7 +62,7 @@ class AsyncRepository(Generic[T]):
     async def save(self, aggregate: T):
         """Call subclass _save implementation and note the aggregate as seen"""
 
-        await self._add(aggregate)
+        await self._save(aggregate)
 
         self._mark_seen(aggregate=aggregate)
 
