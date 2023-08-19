@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections import namedtuple
 from datetime import datetime as dt
 from enum import StrEnum, auto
-from typing import Any, Dict, List, Protocol, Tuple
+from typing import Any, Dict, List, Protocol
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
-
-from cosmos.utils import get_uuid
 
 
 class DomainObject(ABC):
@@ -53,6 +50,19 @@ class ValueObject(DomainObject):
 
 class Entity(DomainObject, ABC):
     def __init__(self, **kwargs):
+        uuid = kwargs.pop("id", None)
+
+        if uuid is None:
+            uuid = uuid4()
+
+        elif type(uuid) != UUID:
+            try:
+                uuid = UUID(uuid)  # cast to UUID
+            except (ValueError, TypeError):
+                uuid = uuid4()  # malformed id
+
+        kwargs["id"] = uuid
+
         super().__init__(**kwargs)
 
         self._changed = False
@@ -78,31 +88,6 @@ class Entity(DomainObject, ABC):
 
         return super().__setattr__(attr, value)
 
-    @staticmethod
-    def create_entity(cls, **kwargs):
-        """If id not passed, enhance kwargs to have it, otherwise validate"""
-
-        uuid = kwargs.pop("id", None)
-
-        if uuid is None:
-            uuid = uuid4()
-
-        elif type(uuid) != UUID:
-            try:
-                uuid = UUID(uuid)  # cast to UUID
-            except (ValueError, TypeError):
-                uuid = uuid4()  # malformed id
-
-        kwargs["id"] = uuid
-
-        return cls(**kwargs)
-
-    @classmethod
-    def create(self, *args, **kwargs):
-        """Implemented Entities require the implementation of a create method."""
-
-        raise NotImplementedError
-
 
 class AggregateRoot(Entity, ABC):
     """Domain object to provide interface into domain."""
@@ -117,6 +102,9 @@ class AggregateRoot(Entity, ABC):
         super().__init__(**kwargs)
 
         self._events = []
+        self._version = 0
+
+        # TODO: emit domain event -> CreatedAggregate
 
     @property
     def events(self) -> List[Event]:
@@ -137,7 +125,7 @@ class AggregateRoot(Entity, ABC):
 
 
 class Message(BaseModel):
-    """Base Message model/schema."""
+    """Base Message model/schema"""
 
     message_id: UUID = Field(default_factory=uuid4)
 

@@ -135,35 +135,45 @@ def test_create_entity_returns_correct_instance_type():
 #########
 
 
-def test_entity_changed():
-    # mock aggregate
+@pytest.fixture
+def MockEntity():
+    class SomeEntityCreated(Event):
+        some_entity_id: UUID
+        some_attr: str
+
     class SomeEntity(AggregateRoot):
-        @classmethod
-        def create(
-            cls,
+        def __init__(
+            self,
             *,
             id: UUID = None,
             some_attr: str,
         ):
-            return Entity.create_entity(
-                cls=cls,
+            super().__init__(
                 id=id,
                 some_attr=some_attr,
             )
 
+            creation_event = SomeEntityCreated(
+                some_entity_id=self.id,
+                some_attr=self.some_attr,
+            )
+
+            self.new_event(event=creation_event)
+
+    return SomeEntity
+
+
+def test_entity_changed(MockEntity):
     # create an instance
-    created_se = SomeEntity.create(
+    entity = MockEntity(
         some_attr="some_attr",
     )
 
-    # mock repository hydration
-    se = SomeEntity(**created_se.to_dict())
+    assert not entity._changed
+    assert entity._changed_attrs.get("some_attr") is None
 
-    assert not se._changed
-    assert se._changed_attrs.get("some_attr") is None
+    entity.some_attr = "SOME_ATTR"
 
-    se.some_attr = "SOME_ATTR"
-
-    assert se._changed
-    assert se._changed_attrs.get("some_attr") is not None
-    assert se._changed_attrs.get("some_attr") == "SOME_ATTR"
+    assert entity._changed
+    assert entity._changed_attrs.get("some_attr") is not None
+    assert entity._changed_attrs.get("some_attr") == "SOME_ATTR"
