@@ -43,11 +43,6 @@ class AsyncUnitOfWork(ABC):
     def context(self, *args, **kwargs) -> AsyncUnitOfWork:
         ...
 
-    def collect_events(self) -> Iterable[Event]:
-        for aggregate in self.repository.seen:
-            while aggregate.has_events:
-                yield aggregate.get_events().pop(0)
-
     async def __aenter__(self) -> AsyncUnitOfWork:
         raise NotImplementedError
 

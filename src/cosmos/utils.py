@@ -1,3 +1,4 @@
+import json
 import logging
 import warnings
 from uuid import UUID, uuid4
@@ -31,3 +32,12 @@ def get_uuid() -> UUID:
     """Reduces uuid lib uuid4 generation to str type."""
 
     return uuid4()
+
+
+def obj_encoder(o):
+    if isinstance(o, UUID):
+        return str(o)
+
+
+def json_encode(data):
+    return json.dumps(data, default=obj_encoder)
