@@ -88,6 +88,10 @@ class Entity(DomainObject, ABC):
 
         return super().__setattr__(attr, value)
 
+    def _reset_changed(self):
+        self._changed = False
+        self._changed_attrs = {}
+
 
 class AggregateRoot(Entity, ABC):
     """Domain object to provide interface into domain."""
@@ -102,9 +106,23 @@ class AggregateRoot(Entity, ABC):
         super().__init__(**kwargs)
 
         self._events = []
-        self._version = 0
+        self._version = 0  # appears this will match version when loaded from repo
 
-        # TODO: emit domain event -> CreatedAggregate
+    def _new_event(self, event: Event):
+        """Add new event to event list"""
+
+        self._events = [*self._events, event]
+
+    def _reset_internals(self):
+        """Will reset events, changes, etc.
+
+        This is useful when AggregateRoot changes to this point are of no concern,
+        e.g. during replay, we want to reset this state before moving further with
+        returning the AR for use in business logic.
+        """
+
+        self._events = []
+        self._reset_changed()
 
     @property
     def events(self) -> List[Event]:
@@ -117,11 +135,6 @@ class AggregateRoot(Entity, ABC):
         """Simple implementation test of whether the aggregate has produced events"""
 
         return len(self._events) > 0
-
-    def new_event(self, event: Event):
-        """Add new event to event list"""
-
-        self._events = [*self._events, event]
 
 
 class Message(BaseModel):
