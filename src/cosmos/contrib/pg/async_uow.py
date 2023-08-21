@@ -40,10 +40,6 @@ class AsyncPGEventStoreRepository(AsyncPGRepository):
 
             current_version += 1
 
-            # TODO: unwanted model_config attr coming thru dict,
-            # TODO: see if we can remove the need for this .pop()
-            d.pop("model_config")
-
             await self.connection.execute(
                 f"""
                 INSERT INTO
