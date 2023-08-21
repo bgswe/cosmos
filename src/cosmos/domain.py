@@ -108,6 +108,17 @@ class AggregateRoot(Entity, ABC):
         self._events = []
         self._version = 0  # appears this will match version when loaded from repo
 
+    @classmethod
+    def replay(cls, events: List[Event]):
+        aggregate_root = cls()
+
+        for event in events:
+            aggregate_root._mutate(event=event)
+
+        aggregate_root._reset_internals()
+
+        return aggregate_root
+
     def _new_event(self, event: Event):
         """Add new event to event list"""
 
