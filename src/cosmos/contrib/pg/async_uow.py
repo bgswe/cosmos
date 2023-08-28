@@ -1,7 +1,8 @@
+from typing import List
 from uuid import UUID
 
 from asyncpg import Connection
-from cosmos.domain import AggregateRoot
+from cosmos.domain import AggregateRoot, Message
 
 from cosmos.repository import AggregateEventStoreRepository
 from cosmos.unit_of_work import UnitOfWork
@@ -96,3 +97,24 @@ class PostgresUnitOfWork(UnitOfWork):
 
         await self.transaction.__aexit__(*args, **kwargs)
         self.transaction = None
+
+
+class PostgresOutbox:
+    connection: Connection
+
+    async def send(self, messages: List[Message]):
+        for message in messages:
+            d = message.model_dump()
+            message_id = d.pop("message_id")
+
+            await self.connection.execute(
+                f"""
+                INSERT INTO
+                    message_outbox (id, type, data) 
+                VALUES
+                    ($1, $2, $3, $4, $5);
+                """,
+                message_id,
+                message.name,
+                json_encode(data=d),
+            )
