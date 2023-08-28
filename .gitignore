@@ -6,3 +6,4 @@ venv/
 .vscode/
 .mypy_cache
 .pytest_cache
+*.txt

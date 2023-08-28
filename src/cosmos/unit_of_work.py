@@ -2,31 +2,22 @@ from __future__ import annotations
 from abc import ABC
 
 from typing import (
-    Any,
-    Generic,
-    Iterable,
-    Dict,
+    List,
     Protocol,
-    Type,
-    TypeVar,
 )
 
-from cosmos.domain import AggregateRoot, Event
-from cosmos.repository import AsyncRepository
-
-T = TypeVar("T", bound=AggregateRoot)
+from cosmos.domain import Message
+from cosmos.repository import AggregateRepository
 
 
-class Collect(Protocol):
-    """Callback protocol to provide an abstracted collect method."""
+class TransactionalOutbox(Protocol):
+    async def send(self, messages: List[Message]):
+        """Delievers a message to to transactional outbox"""
 
-    def __call__(self, repository: AsyncRepository) -> Iterable[Event]:
-        """An interface to collect events from a repository"""
-
-        ...
+        pass
 
 
-class AsyncUnitOfWork(ABC):
+class UnitOfWork(ABC):
     """A class dedicated to defining what one 'unit' of work is.
 
     This is an implementation of the unit of work pattern. Its core
@@ -35,39 +26,16 @@ class AsyncUnitOfWork(ABC):
     that point shall be reverted.
     """
 
-    repository: AsyncRepository
+    repository: AggregateRepository
+    outbox: TransactionalOutbox
 
-    def __init__(self, *args, **kwargs) -> None:
-        ...
-
-    def context(self, *args, **kwargs) -> AsyncUnitOfWork:
-        ...
-
-    async def __aenter__(self) -> AsyncUnitOfWork:
+    async def __aenter__(self) -> UnitOfWork:
         raise NotImplementedError
 
     async def __aexit__(self, *args):
         raise NotImplementedError
 
+    async def send_events_to_outbox(self):
+        events = [event for agg in self.repository.seen for event in agg.events]
 
-class AsyncUnitOfWorkFactory(Generic[T]):
-    """Factory implementation to create an async uow, from a uow cls and repo cls."""
-
-    def __init__(
-        self,
-        uow_cls: Type[AsyncUnitOfWork],
-        uow_kwargs: Dict[Any, Any] | None = None,
-    ):
-        """Takes a uow class and repo class, and saves for use in uow creation."""
-
-        self._uow_cls = uow_cls
-        self._uow_kwargs = uow_kwargs if uow_kwargs else {}
-
-    def get_uow(self) -> AsyncUnitOfWork:
-        """Create and return a new uow instance."""
-
-        uow = self._uow_cls(
-            **self._uow_kwargs,
-        )
-
-        return uow
+        await self.outbox.send(messages=events)

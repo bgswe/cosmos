@@ -1,33 +1,27 @@
-from abc import ABC
-import json
-from typing import Type
 from uuid import UUID
 
 from asyncpg import Connection
 from cosmos.domain import AggregateRoot
 
-from cosmos.repository import AsyncRepository
-from cosmos.unit_of_work import AsyncUnitOfWork
+from cosmos.repository import AggregateEventStoreRepository
+from cosmos.unit_of_work import UnitOfWork
 from cosmos.utils import json_encode
 
 
-class AsyncPGRepository(AsyncRepository, ABC):
-    def __init__(self, connection: Connection):
-        self.connection = connection
-
-        super().__init__()
-
-
-class AsyncPGEventStoreRepository(AsyncPGRepository):
+class PostgresEventStore(AggregateEventStoreRepository):
     """
-    This repository is shaping up to be usable for any aggregate in the system,
-    if given a proper replay function.
+    This is a general-use repository used to get or save event streams
+    from/to a postgresql server.
     """
 
-    def __init__(self, AggregateRootClass: AggregateRoot, **kwargs):
+    def __init__(
+        self,
+        connection: Connection,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
-        self._AggregateRootClass = AggregateRootClass
+        self.connection = connection
 
     async def _save(self, aggregate_root: AggregateRoot):
         current_version = getattr(aggregate_root, "_version", -1)
@@ -67,38 +61,38 @@ class AsyncPGEventStoreRepository(AsyncPGRepository):
             id,
         )
 
-        # hydrate event objects based on str:EventClass pairs provided by the AggregateRootClass
-        events = [
-            self._AggregateRootClass.EVENT_TYPES[record["type"]](
-                message_id=record["id"], **(json.loads(record["data"]))
-            )
-            for record in query
-        ]
+        records = [record for record in query]
+
+        # TODO:CRITICAL: what does the event_record look like coming back from here?
+        print(records)
 
         # replay hydrated events to reconstruct current aggregate root state
-        aggregate_root = self._AggregateRootClass.replay(events=events)
+        aggregate_root = self._replay_handler.replay(event_stream=records)
 
         # TODO: could add timing logs to gauge how long the hydration/replay lasts
 
         return aggregate_root
 
 
-class AsyncUnitOfWorkPostgres(AsyncUnitOfWork):
-    def __init__(self, connection: Connection):
+class PostgresUnitOfWork(UnitOfWork):
+    def __init__(
+        self,
+        connection: Connection,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+
         self.connection = connection
 
-    def context(self, AggregateRootClass: Type):
-        self.repository = AsyncPGEventStoreRepository(
-            connection=self.connection,
-            AggregateRootClass=AggregateRootClass,
-        )
-
-        return self
-
-    async def __aenter__(self, *args, **kwargs) -> AsyncUnitOfWork:
+    async def __aenter__(self, *args, **kwargs) -> UnitOfWork:
         self.transaction = self.connection.transaction()
         await self.transaction.__aenter__(*args, **kwargs)
         return self
 
     async def __aexit__(self, *args, **kwargs):
-        return await self.transaction.__aexit__(*args, **kwargs)
+        """..."""
+
+        await self.send_events_to_outbox()
+
+        await self.transaction.__aexit__(*args, **kwargs)
+        self.transaction = None

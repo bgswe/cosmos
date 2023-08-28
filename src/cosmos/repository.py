@@ -1,36 +1,49 @@
-from typing import Generic, List, TypeVar
+from typing import Dict, List, Protocol
 from uuid import UUID
 
-from cosmos.domain import AggregateRoot
-
-T = TypeVar("T", bound=AggregateRoot)
+from cosmos.domain import AggregateRoot, Event
 
 
-class AsyncRepository(Generic[T]):
-    """ABC which enables an async aggregate persistence abstraction.
+class ReplaysAggregate(Protocol):
+    """Interface for port into reconstituting an Aggregate given an event stream"""
 
-    The core responsbility of this class is track WHICH aggregate instances
-    have passsed through the repository, via any of the available methods.
-    The concrete repository implementation is responsible for persistence
-    related implementation details.
+    def replay(self, event_stream: List[Event]) -> AggregateRoot:
+        """Replays the event stream and returns the resulting AggregateRoot"""
+
+        pass
+
+
+class HydratesEvent(Protocol):
+    """Interface for port into reconstituting an Event given an event record
+
+    TODO: Will this require creating a concretion record obj?
     """
 
+    def hydrate(self, event_record: Dict) -> Event:
+        """Deserializes event into an Event object"""
+
+        pass
+
+
+class AggregateRepository:
+    """ABC which enables an aggregate persistence abstraction"""
+
     def __init__(self):
-        """Initializes set to track what aggregates have been seen."""
+        """Initializes set to track what aggregates have been seen"""
 
         self._seen = []
 
     @property
-    def seen(self) -> List[T]:
+    def seen(self) -> List[AggregateRoot]:
         return self._seen
 
-    def _mark_seen(self, aggregate: T):
-        """Utility to add a given aggregate to the set of seen aggregates."""
+    def _mark_seen(self, aggregate: AggregateRoot):
+        """Utility to add a given aggregate to the set of seen aggregates"""
 
         self._seen.append(aggregate)
 
-    async def get(self, id: UUID) -> T | None:
-        """Call subclass _get implementation and note the aggregate as seen.
+    async def get(self, id: UUID) -> AggregateRoot | None:
+        """Call subclass _get implementation and note the aggregate as seen
 
         :param: id -> the UUID of Aggregate to get
         """
@@ -42,7 +55,7 @@ class AsyncRepository(Generic[T]):
 
         return agg
 
-    async def get_list(self, **kwargs) -> List[T]:
+    async def get_list(self, **kwargs) -> List[AggregateRoot]:
         """Call subclass _get_list implementation and note the aggregates as seen.
 
         :param: **kwargs -> any possible keyword arguments parameters used by
@@ -59,24 +72,54 @@ class AsyncRepository(Generic[T]):
 
         return agg_list
 
-    async def save(self, aggregate: T):
+    async def save(self, aggregate: AggregateRoot):
         """Call subclass _save implementation and note the aggregate as seen"""
 
         await self._save(aggregate)
 
         self._mark_seen(aggregate=aggregate)
 
-    async def _get(self, id: UUID) -> T | None:
-        """Required for repository implementation to get an instance type 'T'"""
+    async def _get(self, id: UUID) -> AggregateRoot | None:
+        """Required for repository implementation to get an AggregateRoot"""
 
         raise NotImplementedError
 
-    async def _get_list(self, **kwargs) -> List[T]:
-        """Required for repository implementation to get a list of type 'T'"""
+    async def _get_list(self, **kwargs) -> List[AggregateRoot]:
+        """Required for repository implementation to get a list of AggregateRoots"""
 
         raise NotImplementedError
 
-    async def _save(self, aggregate: T):
-        """Required for repository implementation to persist an instance of type 'T'"""
+    async def _save(self, aggregate: AggregateRoot):
+        """Required for repository implementation to persist an AggregateRoot"""
 
         raise NotImplementedError
+
+
+class AggregateEventStoreRepository(AggregateRepository):
+    def __init__(
+        self,
+        replay_handler: ReplaysAggregate,  # TODO: revisit this param name
+    ):
+        """Initializes set to track what aggregates have been seen"""
+
+        super().__init__()
+
+        self._replay_handler = replay_handler
+
+
+class AggregateReplay:
+    event_hydrator: HydratesEvent
+
+    def replay(self, event_stream: List[Dict]):
+        """..."""
+
+        events = [
+            self.event_hydrator.hydrate(event_record=event) for event in event_stream
+        ]
+
+        self._replay(event_stream=events)
+
+    def _replay(self, event_stream: List[Event]):
+        """..."""
+
+        raise NotImplementedError("This method must be implemented")

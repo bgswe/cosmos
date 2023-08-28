@@ -45,7 +45,7 @@ class ValueObject(DomainObject):
             return False
 
         # compare shallow equality for property dicts
-        return self._initial_properties == other._initial_properties
+        return self.to_dict() == other.to_dict()
 
 
 class Entity(DomainObject, ABC):
@@ -119,6 +119,15 @@ class AggregateRoot(Entity, ABC):
 
         return aggregate_root
 
+    def _mutate(self, event: Event):
+        """Each AggregateRoot needs to define a _mutate method
+
+        This method will decide how each event will change the
+        aggregate's state
+        """
+
+        raise NotImplementedError
+
     def _new_event(self, event: Event):
         """Add new event to event list"""
 
@@ -185,6 +194,7 @@ class CommandComplete(Event):
     timestamp: dt
     command_name: str
     command_id: UUID
+    client_id: UUID | None = None
     status: CommandCompletionStatus
 
 
@@ -192,17 +202,3 @@ class AuthenticatedCommand(Message):
     """Command message which requires the invokee to be authenticated"""
 
     client_id: UUID  # client invoking command
-
-
-class EventPublish(Protocol):
-    """Callback protocall for publishing an event to the stream bus."""
-
-    def __call__(self, event: Event):
-        """Publishes internal event to external event stream.
-
-        TODO: It's likely that this is not a sufficient signature.
-        If not, then it would need to raise an expection on publication
-        failure.
-        """
-
-        ...
