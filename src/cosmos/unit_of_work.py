@@ -11,12 +11,13 @@ from cosmos.repository import AggregateRepository
 
 
 class TransactionalOutbox(Protocol):
-    async def send(self, messages: List[Message]):
+    async def send(self, messages: List[Message], **kwargs):
         """Delievers a message to to transactional outbox"""
 
         pass
 
 
+# TODO: Make this a protocol, no need for a concrete class
 class UnitOfWork(ABC):
     """A class dedicated to defining what one 'unit' of work is.
 
@@ -34,8 +35,3 @@ class UnitOfWork(ABC):
 
     async def __aexit__(self, *args):
         raise NotImplementedError
-
-    async def send_events_to_outbox(self):
-        events = [event for agg in self.repository.seen for event in agg.events]
-
-        await self.outbox.send(messages=events)
