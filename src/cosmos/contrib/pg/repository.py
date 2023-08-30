@@ -64,9 +64,6 @@ class PostgresEventStore(AggregateEventStoreRepository):
 
             records = [record for record in query]
 
-            # TODO:CRITICAL: what does the event_record look like coming back from here?
-            print(records)
-
             # replay hydrated events to reconstruct current aggregate root state
             aggregate_root = self._replay_handler.replay(event_stream=records)
 

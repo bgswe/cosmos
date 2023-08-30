@@ -27,8 +27,9 @@ class UnitOfWork(ABC):
     that point shall be reverted.
     """
 
-    repository: AggregateRepository
-    outbox: TransactionalOutbox
+    def __init__(self, repository, outbox):
+        self.repository = repository
+        self.outbox = outbox
 
     async def __aenter__(self) -> UnitOfWork:
         raise NotImplementedError
