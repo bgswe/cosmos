@@ -107,7 +107,8 @@ class AggregateEventStoreRepository(AggregateRepository):
 
 
 class AggregateReplay:
-    event_hydrator: HydratesEvent
+    def __init__(self, event_hydrator: HydratesEvent):
+        self.event_hydrator = event_hydrator
 
     def replay(self, event_records: List[Dict]):
         """..."""
