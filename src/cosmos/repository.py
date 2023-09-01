@@ -36,6 +36,9 @@ class AggregateRepository:
     def seen(self) -> List[AggregateRoot]:
         return self._seen
 
+    def reset(self):
+        self._seen = []
+
     def _mark_seen(self, aggregate: AggregateRoot):
         """Utility to add a given aggregate to the set of seen aggregates"""
 
