@@ -20,6 +20,8 @@ class PostgresUnitOfWork(UnitOfWork):
         self.connection = await self._pool_acquire_context.__aenter__()
         self._transaction = self.connection.transaction()
 
+        self.outbox.connection = self.connection
+
         await self._transaction.__aenter__()
 
         return self
@@ -28,6 +30,7 @@ class PostgresUnitOfWork(UnitOfWork):
         """..."""
 
         await self.send_events_to_outbox()
+        self.outbox.connection = None
 
         await self._transaction.__aexit__(*args, **kwargs)
         await self._pool_acquire_context.__aexit__(*args, **kwargs)

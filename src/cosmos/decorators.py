@@ -36,7 +36,8 @@ def command(handler_func: CommandHandler):
             status=CommandCompletionStatus.SUCCESS,
         )
 
-        await uow.outbox.send(messages=[completion_event])
+        async with uow as uow:
+            await uow.outbox.send(messages=[completion_event])
 
     return inner_func
 
