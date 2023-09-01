@@ -162,7 +162,22 @@ class Message(BaseModel):
 class Event(Message):
     """Base Event of our domain model"""
 
+    ...
+
+
+class DomainEvent(Message):
+    """Event arising from the Domain"""
+
     stream_id: UUID
+
+
+class SystemEvent(Event):
+    """Event arising in abstraction levels above the Domain
+
+    NOTE: Alternatively this can be a 'ServiceEvent'?
+    """
+
+    ...
 
 
 class Command(Message):
@@ -176,7 +191,7 @@ class CommandCompletionStatus(StrEnum):
     FAILURE = auto()
 
 
-class CommandComplete(Event):
+class CommandComplete(SystemEvent):
     """This is an event which is emitted upon completion of command handling"""
 
     timestamp: dt
