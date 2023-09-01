@@ -27,7 +27,7 @@ def command(handler_func: CommandHandler):
         # enable ability to run ancillary code after command handled, under single transaction
         async with uow as uow:
             # invoke decorated business logic with given command
-            await handler_func(uow=uow, command=Command)
+            await handler_func(uow=uow, command=command)
 
         completion_event = CommandComplete(
             command_id=command.message_id,
