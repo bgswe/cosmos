@@ -15,29 +15,28 @@ class PostgresUnitOfWork(UnitOfWork):
         super().__init__(**kwargs)
 
     async def __aenter__(self) -> UnitOfWork:
+        """Entry into the async ctx manager for Postgres transaction"""
+
         self._pool_acquire_context = self.pool.acquire()
 
+        # leverage async ctx manager from asyncpg to get connection,
+        # and initiate a new transaction
         self.connection = await self._pool_acquire_context.__aenter__()
         self._transaction = self.connection.transaction()
-
-        self.outbox.connection = self.connection
-
         await self._transaction.__aenter__()
+
+        # provide outbox with the DB connection, under the same transaction
+        self.outbox.connection = self.connection
 
         return self
 
     async def __aexit__(self, *args, **kwargs):
-        """..."""
+        """Exit method of the async ctx manager for Postgres Transaction"""
 
-        await self.send_events_to_outbox()
+        # before commiting transaction, save all found domain events to the outbox
+        events = [event for agg in self.repository.seen for event in agg.events]
+        await self.outbox.send(messages=events)
         self.outbox.connection = None
 
         await self._transaction.__aexit__(*args, **kwargs)
         await self._pool_acquire_context.__aexit__(*args, **kwargs)
-
-    async def send_events_to_outbox(self):
-        """..."""
-
-        events = [event for agg in self.repository.seen for event in agg.events]
-
-        await self.outbox.send(connection=self.connection, messages=events)
