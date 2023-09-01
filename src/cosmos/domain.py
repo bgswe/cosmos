@@ -108,30 +108,18 @@ class AggregateRoot(Entity, ABC):
         self._events = []
         self._version = 0  # appears this will match version when loaded from repo
 
-    @classmethod
-    def replay(cls, events: List[Event]):
-        aggregate_root = cls()
-
-        for event in events:
-            aggregate_root._mutate(event=event)
-
-        aggregate_root._reset_internals()
-
-        return aggregate_root
-
-    def _mutate(self, event: Event):
+    def mutate(self, event: Event):
         """Each AggregateRoot needs to define a _mutate method
 
         This method will decide how each event will change the
         aggregate's state
         """
 
-        raise NotImplementedError
-
-    def _new_event(self, event: Event):
-        """Add new event to event list"""
-
         self._events = [*self._events, event]
+        self._mutate(event=event)
+
+    def _mutate(self, event: Event):
+        raise NotImplementedError
 
     def _reset_internals(self):
         """Will reset events, changes, etc.

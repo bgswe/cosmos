@@ -1,4 +1,4 @@
-from typing import Dict, List, Protocol
+from typing import Dict, List, Protocol, Tuple, Type
 from uuid import UUID
 
 from cosmos.domain import AggregateRoot, Event
@@ -14,15 +14,14 @@ class ReplaysAggregate(Protocol):
 
 
 class HydratesEvent(Protocol):
-    """Interface for port into reconstituting an Event given an event record
+    """Interface for port into reconstituting an Event given an event record"""
 
-    TODO: Will this require creating a concretion record obj?
-    """
+    def hydrate(
+        self, event_record: List[Dict]
+    ) -> Tuple[Type[AggregateRoot], List[Event]]:
+        """Deserializes an event list and return a list of Event objects, and the AggregateRoot Type"""
 
-    def hydrate(self, event_record: Dict) -> Event:
-        """Deserializes event into an Event object"""
-
-        pass
+        ...
 
 
 class AggregateRepository:
@@ -110,16 +109,16 @@ class AggregateEventStoreRepository(AggregateRepository):
 class AggregateReplay:
     event_hydrator: HydratesEvent
 
-    def replay(self, event_stream: List[Dict]):
+    def replay(self, event_records: List[Dict]):
         """..."""
 
-        events = [
-            self.event_hydrator.hydrate(event_record=event) for event in event_stream
-        ]
+        AggregateRootClass, event_stream = self.event_hydrator.hydrate(
+            event_records=event_records,
+        )
 
-        self._replay(event_stream=events)
+        aggregate_root = AggregateRootClass()
 
-    def _replay(self, event_stream: List[Event]):
-        """..."""
+        for event in event_stream:
+            aggregate_root.mutate(event=event)
 
-        raise NotImplementedError("This method must be implemented")
+        return aggregate_root

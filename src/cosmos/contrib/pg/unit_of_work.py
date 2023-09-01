@@ -2,20 +2,17 @@ from uuid import UUID
 
 import asyncpg
 from cosmos.unit_of_work import UnitOfWork
-from cosmos.repository import AggregateRepository
-from cosmos.unit_of_work import TransactionalOutbox
 
 
 class PostgresUnitOfWork(UnitOfWork):
     def __init__(
         self,
-        repository: AggregateRepository,
-        outbox: TransactionalOutbox,
         pool: asyncpg.Pool,
+        **kwargs,
     ):
-        self.repository = repository
-        self.outbox = outbox
         self.pool = pool
+
+        super().__init__(**kwargs)
 
     async def __aenter__(self) -> UnitOfWork:
         self._pool_acquire_context = self.pool.acquire()
