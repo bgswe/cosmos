@@ -17,7 +17,6 @@ class TransactionalOutbox(Protocol):
         pass
 
 
-# TODO: Make this a protocol, no need for a concrete class
 class UnitOfWork(ABC):
     """A class dedicated to defining what one 'unit' of work is.
 
@@ -27,7 +26,7 @@ class UnitOfWork(ABC):
     that point shall be reverted.
     """
 
-    def __init__(self, repository, outbox):
+    def __init__(self, repository: AggregateRepository, outbox: TransactionalOutbox):
         self.repository = repository
         self.outbox = outbox
 

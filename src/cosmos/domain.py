@@ -162,7 +162,7 @@ class Message(BaseModel):
 class Event(Message):
     """Base Event of our domain model"""
 
-    ...
+    stream_id: UUID
 
 
 class Command(Message):

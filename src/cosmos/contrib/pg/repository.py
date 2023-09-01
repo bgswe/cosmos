@@ -65,7 +65,7 @@ class PostgresEventStore(AggregateEventStoreRepository):
             records = [record for record in query]
 
             # replay hydrated events to reconstruct current aggregate root state
-            aggregate_root = self._replay_handler.replay(event_stream=records)
+            aggregate_root = self._replay_handler.replay(event_records=records)
 
             # TODO: could add timing logs to gauge how long the hydration/replay lasts
 
