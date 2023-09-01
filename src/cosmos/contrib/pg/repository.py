@@ -53,7 +53,7 @@ class PostgresEventStore(AggregateEventStoreRepository):
             query = await connection.fetch(
                 f"""
                 SELECT
-                    id, stream_id, type, version, data
+                    id, stream_id, stream_type, event_type, version, data
                 FROM
                     events
                 WHERE
