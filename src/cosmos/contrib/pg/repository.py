@@ -37,12 +37,13 @@ class PostgresEventStore(AggregateEventStoreRepository):
                     await connection.execute(
                         f"""
                         INSERT INTO
-                            events(id, stream_id, type, version, data) 
+                            events(id, stream_id, stream_type, event_type, version, data) 
                         VALUES
-                            ($1, $2, $3, $4, $5);
+                            ($1, $2, $3, $4, $5, $6);
                         """,
                         message_id,
                         aggregate_root.id,
+                        aggregate_root.name,
                         event.name,
                         current_version,
                         json_encode(data=d),

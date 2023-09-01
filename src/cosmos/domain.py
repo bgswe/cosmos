@@ -3,70 +3,73 @@ from __future__ import annotations
 from abc import ABC
 from datetime import datetime as dt
 from enum import StrEnum, auto
-from typing import Any, Dict, List, Protocol
+from typing import Any, Dict, List
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class DomainObject(ABC):
-    def __init__(self, **kwargs):
-        """Sets the key value pairs as attributes"""
+# class DomainObject(ABC):
+#     def __init__(self, **kwargs):
+#         """Sets the key value pairs as attributes"""
+
+#         self._initialized = False
+
+#         for k, v in kwargs.items():
+#             setattr(self, k, v)
+
+#         self._initialized = True
+
+
+# class ValueObject(DomainObject):
+#     def __eq__(self, other: Any) -> bool:
+#         if not other:  # other is falsey
+#             return False
+
+#         if self == other:  # same object in memory
+#             return True
+
+#         if not isinstance(other, ValueObject):  # other not value object
+#             return False
+
+#         # compare shallow equality for property dicts
+#         return self.to_dict() == other.to_dict()
+
+
+class Entity(ABC):
+    def __init__(self):
+        """..."""
 
         self._initialized = False
-
-        for k, v in kwargs.items():
-            setattr(self, k, v)
-
-        self._initialized = True
+        self._changed = False
+        self._changed_attrs: Dict[str, Any] = {}
 
     def to_dict(self):
-        """Basic interpretation of self as a dict."""
+        """Basic interpretation of the instance as a dict"""
 
         _vars = vars(self)
 
         return {k: v for k, v in _vars.items() if not k.startswith("_")}
 
-    def __repr__(self):
-        """Use dictionary representation as the default."""
+    def _initialize(self, **attrs):
+        """..."""
 
-        return str(self.to_dict())
-
-
-class ValueObject(DomainObject):
-    def __eq__(self, other: Any) -> bool:
-        if not other:  # other is falsey
-            return False
-
-        if self == other:  # same object in memory
-            return True
-
-        if not isinstance(other, ValueObject):  # other not value object
-            return False
-
-        # compare shallow equality for property dicts
-        return self.to_dict() == other.to_dict()
-
-
-class Entity(DomainObject, ABC):
-    def __init__(self, **kwargs):
-        uuid = kwargs.pop("id", None)
+        uuid = attrs.pop("id", None)
 
         if uuid is None:
             uuid = uuid4()
 
-        elif type(uuid) != UUID:
-            try:
-                uuid = UUID(uuid)  # cast to UUID
-            except (ValueError, TypeError):
-                uuid = uuid4()  # malformed id
+        attrs["id"] = uuid
 
-        kwargs["id"] = uuid
+        for attr, value in attrs.items():
+            setattr(self, attr, value)
 
-        super().__init__(**kwargs)
+        self.initialized = True
 
-        self._changed = False
-        self._changed_attrs: Dict[str, Any] = {}
+    def __repr__(self):
+        """Use dictionary representation as the default"""
+
+        return str(self.to_dict())
 
     def __eq__(self, other: object) -> bool:
         """Simple equality for all domain objects, based on ID"""
@@ -96,14 +99,10 @@ class Entity(DomainObject, ABC):
 class AggregateRoot(Entity, ABC):
     """Domain object to provide interface into domain."""
 
-    def __init__(self, **kwargs):
-        """Aggregate initialize function
+    def __init__(self):
+        """..."""
 
-        Initializes an empty event list to capture events raised during the
-        lifetime of this aggregate instance.
-        """
-
-        super().__init__(**kwargs)
+        super().__init__()
 
         self._events = []
         self._version = 0  # appears this will match version when loaded from repo
@@ -139,10 +138,10 @@ class AggregateRoot(Entity, ABC):
         return self._events
 
     @property
-    def has_events(self) -> bool:
-        """Simple implementation test of whether the aggregate has produced events"""
+    def name(self) -> str:
+        """..."""
 
-        return len(self._events) > 0
+        return type(self).__name__
 
 
 class Message(BaseModel):
