@@ -12,62 +12,50 @@ class PostgresEventStore(AggregateEventStoreRepository):
     from/to a postgresql server.
     """
 
-    def __init__(
-        self,
-        pool: asyncpg.Pool,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-
-        self.pool = pool
-
     async def _save(self, aggregate_root: AggregateRoot):
         current_version = getattr(aggregate_root, "_version", -1)
 
         # TODO: if -1, possible issue in AggRoot __init__ def
 
-        async with self.pool.acquire() as connection:
-            async with connection.transaction():
-                for event in aggregate_root.events:
-                    d = event.model_dump()
-                    message_id = d.pop("message_id")
+        for event in aggregate_root.events:
+            d = event.model_dump()
+            message_id = d.pop("message_id")
 
-                    current_version += 1
+            current_version += 1
 
-                    await connection.execute(
-                        f"""
-                        INSERT INTO
-                            events(id, stream_id, stream_type, event_type, version, data) 
-                        VALUES
-                            ($1, $2, $3, $4, $5, $6);
-                        """,
-                        message_id,
-                        aggregate_root.id,
-                        aggregate_root.name,
-                        event.name,
-                        current_version,
-                        json_encode(data=d),
-                    )
-
-    async def _get(self, id: UUID):
-        async with self.pool.acquire() as connection:
-            query = await connection.fetch(
+            await self.connection.execute(
                 f"""
-                SELECT
-                    id, stream_id, stream_type, event_type, version, data
-                FROM
-                    events
-                WHERE
-                    stream_id = $1
+                INSERT INTO
+                    events(id, stream_id, stream_type, event_type, version, data) 
+                VALUES
+                    ($1, $2, $3, $4, $5, $6);
                 """,
-                id,
+                message_id,
+                aggregate_root.id,
+                aggregate_root.name,
+                event.name,
+                current_version,
+                json_encode(data=d),
             )
 
-            records = [record for record in query]
+    async def _get(self, id: UUID):
+        query = await self.connection.fetch(
+            f"""
+            SELECT
+                id, stream_id, stream_type, event_type, version, data
+            FROM
+                events
+            WHERE
+                stream_id = $1
+            """,
+            id,
+        )
 
-            # replay hydrated events to reconstruct current aggregate root state
-            aggregate_root = self._replay_handler.replay(event_records=records)
+        records = [record for record in query]
 
-            # TODO: could add timing logs to gauge how long the hydration/replay lasts
+        # replay hydrated events to reconstruct current aggregate root state
+        aggregate_root = self._replay_handler.replay(event_records=records)
 
-            return aggregate_root
+        # TODO: could add timing logs to gauge how long the hydration/replay lasts
+
+        return aggregate_root

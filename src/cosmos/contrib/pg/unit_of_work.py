@@ -1,3 +1,4 @@
+from contextlib import AsyncExitStack
 from uuid import UUID
 
 import asyncpg
@@ -12,34 +13,38 @@ class PostgresUnitOfWork(UnitOfWork):
     ):
         self.pool = pool
 
+        self._stack = None
+
         super().__init__(**kwargs)
 
     async def __aenter__(self) -> UnitOfWork:
         """Entry into the async ctx manager for Postgres transaction"""
 
-        self._pool_acquire_context = self.pool.acquire()
+        async with AsyncExitStack() as stack:
+            # acquire a new connection from pool, and begin a transaction
+            connection = await stack.enter_async_context(self.pool.acquire())
+            await stack.enter_async_context(connection.transaction())
 
-        # leverage async ctx manager from asyncpg to get connection,
-        # and initiate a new transaction
-        self.connection = await self._pool_acquire_context.__aenter__()
-        self._transaction = self.connection.transaction()
-        await self._transaction.__aenter__()
+            # provide connection to outbox, and repository so that
+            # they are ran under a single transaction
+            self.outbox.connection = connection
+            self.repository.connection = connection
 
-        # provide outbox with the DB connection, under the same transaction
-        self.outbox.connection = self.connection
+            # transfer __aexit__ callback stack so it may called in this obj's __aexit__
+            self._stack = stack.pop_all()
 
         return self
 
-    async def __aexit__(self, *args, **kwargs):
+    async def __aexit__(self, exc_type, exc, traceback):
         """Exit method of the async ctx manager for Postgres Transaction"""
 
-        # before commiting transaction, save all found domain events to the outbox
+        # save all new domain events to the transactional outbox
         events = [event for agg in self.repository.seen for event in agg.events]
         await self.outbox.send(messages=events)
 
-        # cleanup duties
+        # reset outbox connection, and reset seen aggregates in repository
         self.outbox.connection = None
+        self.repository.connection = None
         self.repository.reset()
 
-        await self._transaction.__aexit__(*args, **kwargs)
-        await self._pool_acquire_context.__aexit__(*args, **kwargs)
+        await self._stack.__aexit__(exc_type, exc, traceback)
