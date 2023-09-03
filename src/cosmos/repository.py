@@ -1,3 +1,4 @@
+import json
 from typing import Dict, List, Protocol, Tuple, Type
 from uuid import UUID
 
@@ -107,6 +108,42 @@ class AggregateEventStoreRepository(AggregateRepository):
         super().__init__()
 
         self._replay_handler = replay_handler
+
+
+class EventHydrator:
+    def __init__(
+        self,
+        aggregate_root_mapping: Dict[str, Type[AggregateRoot]],
+        event_hydration_mapping: Dict[str, Type[Event]],
+    ):
+        self.aggregate_root_mapping = aggregate_root_mapping
+        self.event_hydration_mapping = event_hydration_mapping
+
+    def hydrate(self, event_records: Dict) -> Tuple[Type[AggregateRoot], List[Event]]:
+        """Basic implementation of hydrator
+
+        NOTE: The idea is that different implementations of the HydratesEvent
+        interface would require different logic to handle varied schemas.
+        This may not be there case, and it may not be trouble to
+        coalesce around an expected schema.
+        """
+
+        events = []
+        for event_record in event_records:
+            AggregateRootClass = self.aggregate_root_mapping[
+                event_record["stream_type"]
+            ]
+            EventClass = self.event_hydration_mapping[event_record["event_type"]]
+
+            events.append(
+                EventClass(
+                    message_id=event_record["id"],
+                    stream_id=event_record["stream_id"],
+                    **json.loads(event_record["data"]),
+                )
+            )
+
+        return AggregateRootClass, events
 
 
 class AggregateReplay:
