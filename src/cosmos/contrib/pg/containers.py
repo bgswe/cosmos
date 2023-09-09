@@ -3,6 +3,7 @@ from cosmos.contrib.pg import (
     PostgresOutbox,
     PostgresEventStore,
     PostgresUnitOfWork,
+    PostgresProcessedMessageRepository,
 )
 from dependency_injector import containers, providers
 
@@ -38,8 +39,13 @@ class PostgresDomainContainer(containers.DeclarativeContainer):
         PostgresOutbox,
     )
 
+    processed_messages = providers.Factory(
+        PostgresProcessedMessageRepository,
+    )
+
     unit_of_work = providers.Factory(
         PostgresUnitOfWork,
+        processed_message_repository=processed_messages,
         pool=connection_pool,
         repository=repository,
         outbox=outbox,

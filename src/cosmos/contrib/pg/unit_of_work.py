@@ -5,6 +5,46 @@ import asyncpg
 from cosmos.unit_of_work import UnitOfWork
 
 
+class PostgresProcessedMessageRepository:
+    """
+    This is a general-use repository used to get or save event streams
+    from/to a postgresql server.
+    """
+
+    def __init__(self):
+        self.connection = None
+
+    async def is_processed(self, message_id: UUID):
+        query = await self.connection.fetch(
+            f"""
+            SELECT EXISTS (
+                SELECT
+                    1
+                FROM
+                    processed_messages
+                where
+                    id = $1
+            )
+            """,
+            id,
+        )
+
+        print(query)
+
+        return False
+
+    async def mark_processed(self, id: UUID):
+        await self.connection.execute(
+            f"""
+            INSERT INTO
+                processed_messages (id) 
+            VALUES
+                ($1);
+            """,
+            id,
+        )
+
+
 class PostgresUnitOfWork(UnitOfWork):
     def __init__(
         self,
@@ -29,6 +69,7 @@ class PostgresUnitOfWork(UnitOfWork):
             # they are ran under a single transaction
             self.outbox.connection = connection
             self.repository.connection = connection
+            self.processed_messages.connection = connection
 
             # transfer __aexit__ callback stack so it may called in this obj's __aexit__
             self._stack = stack.pop_all()
@@ -42,9 +83,12 @@ class PostgresUnitOfWork(UnitOfWork):
         events = [event for agg in self.repository.seen for event in agg.events]
         await self.outbox.send(messages=events)
 
-        # reset outbox connection, and reset seen aggregates in repository
+        # reset connection object within dependent objects
         self.outbox.connection = None
         self.repository.connection = None
+        self.processed_messages.connection = None
+
+        # reset state of repository after end of transaction
         self.repository.reset()
 
         await self._stack.__aexit__(exc_type, exc, traceback)

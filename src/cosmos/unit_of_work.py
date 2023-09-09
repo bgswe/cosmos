@@ -5,6 +5,7 @@ from typing import (
     List,
     Protocol,
 )
+from uuid import UUID
 
 from cosmos.domain import Message
 from cosmos.repository import AggregateRepository
@@ -17,6 +18,16 @@ class TransactionalOutbox(Protocol):
         pass
 
 
+class ProcessedMessageRepository(Protocol):
+    """..."""
+
+    def is_processed(self, id: UUID) -> bool:
+        ...
+
+    def mark_processed(self, id: UUID):
+        ...
+
+
 class UnitOfWork(ABC):
     """A class dedicated to defining what one 'unit' of work is.
 
@@ -26,9 +37,15 @@ class UnitOfWork(ABC):
     that point shall be reverted.
     """
 
-    def __init__(self, repository: AggregateRepository, outbox: TransactionalOutbox):
+    def __init__(
+        self,
+        repository: AggregateRepository,
+        outbox: TransactionalOutbox,
+        processed_message_repository: ProcessedMessageRepository,
+    ):
         self.repository = repository
         self.outbox = outbox
+        self.processed_messages = processed_message_repository
 
     async def __aenter__(self) -> UnitOfWork:
         raise NotImplementedError
