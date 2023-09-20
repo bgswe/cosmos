@@ -15,7 +15,7 @@ class PostgresProcessedMessageRepository:
         self.connection = None
 
     async def is_processed(self, message_id: UUID):
-        query = await self.connection.fetch(
+        query = await self.connection.fetchrow(
             f"""
             SELECT EXISTS (
                 SELECT
@@ -26,14 +26,12 @@ class PostgresProcessedMessageRepository:
                     id = $1
             )
             """,
-            id,
+            message_id,
         )
 
-        print(query)
+        return query["exists"]
 
-        return False
-
-    async def mark_processed(self, id: UUID):
+    async def mark_processed(self, message_id: UUID):
         await self.connection.execute(
             f"""
             INSERT INTO
@@ -41,7 +39,7 @@ class PostgresProcessedMessageRepository:
             VALUES
                 ($1);
             """,
-            id,
+            message_id,
         )
 
 

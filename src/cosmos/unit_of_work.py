@@ -21,10 +21,10 @@ class TransactionalOutbox(Protocol):
 class ProcessedMessageRepository(Protocol):
     """..."""
 
-    def is_processed(self, id: UUID) -> bool:
+    def is_processed(self, message_id: UUID) -> bool:
         ...
 
-    def mark_processed(self, id: UUID):
+    def mark_processed(self, message_id: UUID):
         ...
 
 

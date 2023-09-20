@@ -1,13 +1,9 @@
-from datetime import datetime as dt
-from typing import Callable, Protocol, Type
-from uuid import UUID
+from typing import Protocol, Type
 
 from dependency_injector.wiring import Provide
 
 from cosmos.unit_of_work import UnitOfWork
-from cosmos.domain import (
-    Message,
-)
+from cosmos.domain import Command, Message
 
 
 class MessageHandler(Protocol):
@@ -24,35 +20,32 @@ class RegistersMessage(Protocol):
         ...
 
 
-def command(
-    *, message_registrar: Provide["message_registrar"], message_type: Type[Message]
-):
-    def decorator(handler_func: MessageHandler):
-        """Decorator used atop command handler functions
+def command(handler_func: MessageHandler):
+    """Decorator used atop command handler functions
 
-        This provides wiring of the UnitOfWork dependency, and allows complete
-        decoupling of command handlers and the UnitOfWork implementation.
-        """
+    This provides wiring of the UnitOfWork dependency, and allows complete
+    decoupling of command handlers and the UnitOfWork implementation.
+    """
 
-        async def inner_func(
-            message: Message,
-            uow: UnitOfWork = Provide["unit_of_work"],
-        ):
-            # enable ability to run ancillary code after command handled, under single transaction
-            async with uow as uow:
-                # ensure idempotency by checking if messages has been processed
-                if uow.processed_messages.is_processed(id=message.id):
-                    return
+    async def inner_func(
+        *,
+        uow: UnitOfWork = Provide["unit_of_work"],
+        command: Command,
+    ):
+        # enable ability to run ancillary code after command handled, under single transaction
+        async with uow as uow:
+            # ensure idempotency by checking if messages has been processed
+            processed_record = await uow.processed_messages.is_processed(
+                message_id=command.message_id
+            )
 
-                # invoke decorated business logic with given command
-                await handler_func(message, uow)
+            if processed_record:
+                return
 
-                # to ensure message idempotency we record message ID as processed
-                uow.processed_messages.mark_processed(id=message.id)
+            # invoke decorated business logic with given command
+            await handler_func(uow=uow, command=command)
 
-        message_registrar.register_message(
-            message_type=message_type,
-            handler=inner_func,
-        )
+            # to ensure message idempotency we record message ID as processed
+            await uow.processed_messages.mark_processed(message_id=command.message_id)
 
-        return inner_func
+    return inner_func
