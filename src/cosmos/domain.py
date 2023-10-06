@@ -164,7 +164,7 @@ class Event(Message):
     ...
 
 
-class DomainEvent(Message):
+class DomainEvent(Event):
     """Event arising from the Domain"""
 
     stream_id: UUID
