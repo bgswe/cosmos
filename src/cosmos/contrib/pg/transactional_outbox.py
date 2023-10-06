@@ -22,7 +22,7 @@ class PostgresOutbox:
                 INSERT INTO
                     message_outbox (id, message) 
                 VALUES
-                    ($1, $2, $3);
+                    ($1, $2);
                 """,
                 message_id,
                 message,
