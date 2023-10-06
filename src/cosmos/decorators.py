@@ -67,7 +67,7 @@ def event(handler_func: MessageHandler):
         async with uow as uow:
             # ensure idempotency by checking if messages has been processed
             processed_record = await uow.processed_messages.is_processed(
-                message_id=command.message_id
+                message_id=event.message_id
             )
 
             if processed_record:
