@@ -1,8 +1,8 @@
+import pickle
 from typing import List
 
 import asyncpg
 from cosmos.domain import Message
-from cosmos.utils import json_encode
 
 
 class PostgresOutbox:
@@ -14,17 +14,16 @@ class PostgresOutbox:
             raise "This outbox requires setting the connection object before sending"
 
         for message in messages:
-            d = message.model_dump()
-            message_id = d.pop("message_id")
+            message_id = message.message_id
+            message = pickle.dumps(message)
 
             await self.connection.execute(
                 f"""
                 INSERT INTO
-                    message_outbox (id, type, data) 
+                    message_outbox (id, message) 
                 VALUES
                     ($1, $2, $3);
                 """,
                 message_id,
-                message.name,
-                json_encode(data=d),
+                message,
             )
