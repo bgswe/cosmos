@@ -6,8 +6,21 @@ from cosmos.contrib.pg import (
     PostgresProcessedMessageRepository,
 )
 from dependency_injector import containers, providers
+import asyncpg
 
-from utils import generate_postgres_pool
+
+async def generate_postgres_pool(
+    database,
+    user,
+):
+    pool = await asyncpg.create_pool(
+        database=database,
+        user=user,
+    )
+
+    yield pool
+
+    pool.close()
 
 
 class PostgresDomainContainer(containers.DeclarativeContainer):

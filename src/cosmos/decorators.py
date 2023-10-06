@@ -3,7 +3,7 @@ from typing import Protocol, Type
 from dependency_injector.wiring import Provide
 
 from cosmos.unit_of_work import UnitOfWork
-from cosmos.domain import Command, Message
+from cosmos.domain import Command, Event, Message
 
 
 class MessageHandler(Protocol):
@@ -47,5 +47,36 @@ def command(handler_func: MessageHandler):
 
             # to ensure message idempotency we record message ID as processed
             await uow.processed_messages.mark_processed(message_id=command.message_id)
+
+    return inner_func
+
+
+def event(handler_func: MessageHandler):
+    """Decorator used atop command handler functions
+
+    This provides wiring of the UnitOfWork dependency, and allows complete
+    decoupling of command handlers and the UnitOfWork implementation.
+    """
+
+    async def inner_func(
+        *,
+        uow: UnitOfWork = Provide["unit_of_work"],
+        event: Event,
+    ):
+        # enable ability to run ancillary code after command handled, under single transaction
+        async with uow as uow:
+            # ensure idempotency by checking if messages has been processed
+            processed_record = await uow.processed_messages.is_processed(
+                message_id=command.message_id
+            )
+
+            if processed_record:
+                return
+
+            # invoke decorated business logic with given command
+            await handler_func(uow=uow, event=event)
+
+            # to ensure message idempotency we record message ID as processed
+            await uow.processed_messages.mark_processed(message_id=event.message_id)
 
     return inner_func
