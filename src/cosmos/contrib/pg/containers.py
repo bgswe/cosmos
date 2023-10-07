@@ -1,4 +1,7 @@
-from cosmos.repository import AggregateReplay, EventHydrator
+from typing import Dict
+from uuid import UUID
+from cosmos.domain import AggregateRoot
+from cosmos.repository import AggregateReplay, AggregateRepository, EventHydrator
 from cosmos.contrib.pg import (
     PostgresOutbox,
     PostgresEventStore,
@@ -7,6 +10,7 @@ from cosmos.contrib.pg import (
 )
 from dependency_injector import containers, providers
 import asyncpg
+from cosmos.unit_of_work import UnitOfWork
 
 
 async def generate_postgres_pool(
@@ -21,6 +25,52 @@ async def generate_postgres_pool(
     yield pool
 
     pool.close()
+
+
+class MockAggregateStore:
+    def __init__(self):
+        self._store = {}
+
+    def get(self, id: UUID) -> AggregateRoot | None:
+        return self._store.get(id)
+
+    def save(self, agg: AggregateRoot):
+        self._store[agg.id] = agg
+
+
+class MockRepository(AggregateRepository):
+    def __init__(self, aggregate_store: Dict):
+        super().__init__()
+
+        self._store = aggregate_store
+
+    async def _get(self, id: UUID) -> AggregateRoot | None:
+        return self._store.get(id)
+
+    async def _save(self, agg: AggregateRoot):
+        self._store[agg.id] = agg
+
+
+class MockUnitOfWork(UnitOfWork):
+    async def __aenter__(self) -> UnitOfWork:
+        print("__aenter__ from MockUnitOfWork")
+
+    async def __aexit__(self, *args):
+        print("__aexit__ from MockUnitOfWork")
+
+
+class MockDomainContainer(containers.DeclarativeContainer):
+    aggregate_store = providers.Singleton(MockAggregateStore)
+
+    repository = providers.Factory(
+        MockRepository,
+        aggregate_store=aggregate_store,
+    )
+
+    unit_of_work = providers.Factory(
+        MockUnitOfWork,
+        repository=repository,
+    )
 
 
 class PostgresDomainContainer(containers.DeclarativeContainer):
