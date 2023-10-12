@@ -27,6 +27,7 @@ def command(handler_func: MessageHandler):
     decoupling of command handlers and the UnitOfWork implementation.
     """
 
+    @inject
     async def inner_func(
         *,
         uow: UnitOfWork = Provide["unit_of_work"],

@@ -54,6 +54,7 @@ class MockRepository(AggregateRepository):
 class MockUnitOfWork(UnitOfWork):
     async def __aenter__(self) -> UnitOfWork:
         print("__aenter__ from MockUnitOfWork")
+        return self
 
     async def __aexit__(self, *args):
         print("__aexit__ from MockUnitOfWork")
