@@ -27,7 +27,7 @@ class PostgresProcessedMessageRepository:
                     id = $1
             )
             """,
-            message_id,
+            str(message_id),
         )
 
         return query["exists"]
@@ -40,7 +40,7 @@ class PostgresProcessedMessageRepository:
             VALUES
                 ($1);
             """,
-            message_id,
+            str(message_id),
         )
 
 
