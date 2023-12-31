@@ -16,10 +16,12 @@ from cosmos.unit_of_work import UnitOfWork
 async def generate_postgres_pool(
     database,
     user,
+    host,
 ):
     pool = await asyncpg.create_pool(
         database=database,
         user=user,
+        host=host,
     )
 
     yield pool
@@ -81,6 +83,7 @@ class PostgresDomainContainer(containers.DeclarativeContainer):
         generate_postgres_pool,
         database=config.database_name,
         user=config.database_user,
+        host=config.database_host,
     )
 
     event_hydrator = providers.Factory(
