@@ -24,6 +24,6 @@ class PostgresOutbox:
                 VALUES
                     ($1, $2);
                 """,
-                message_id,
+                str(message_id),
                 message,
             )
