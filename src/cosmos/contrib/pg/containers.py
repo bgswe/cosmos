@@ -17,11 +17,13 @@ async def generate_postgres_pool(
     database,
     user,
     host,
+    password,
 ):
     pool = await asyncpg.create_pool(
         database=database,
         user=user,
         host=host,
+        password=password,
     )
 
     yield pool
@@ -84,6 +86,7 @@ class PostgresDomainContainer(containers.DeclarativeContainer):
         database=config.database_name,
         user=config.database_user,
         host=config.database_host,
+        password=config.database_password,
     )
 
     event_hydrator = providers.Factory(
