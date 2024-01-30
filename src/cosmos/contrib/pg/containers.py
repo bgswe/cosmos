@@ -93,10 +93,7 @@ class PostgresDomainContainer(containers.DeclarativeContainer):
         port=config.database_port,
     )
 
-    repository = providers.Factory(
-        PostgresEventStore,
-        replay_handler=replay_handler,
-    )
+    repository = providers.Factory(PostgresEventStore)
 
     outbox = providers.Factory(
         PostgresOutbox,
