@@ -107,6 +107,15 @@ class AggregateRoot(Entity, ABC):
         self._events = []
         self._version = 0  # appears this will match version when loaded from repo
 
+    @classmethod
+    def replay(cls, events: List[Event]):
+        instance = cls()
+
+        for event in events:
+            instance.mutate(event=event)
+
+        return instance
+
     def mutate(self, event: Event):
         """Each AggregateRoot needs to define a _mutate method
 

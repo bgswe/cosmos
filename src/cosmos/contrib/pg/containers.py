@@ -1,16 +1,17 @@
 from typing import Dict
 from uuid import UUID
+
+import asyncpg
 from cosmos.domain import AggregateRoot
-from cosmos.repository import AggregateReplay, AggregateRepository, EventHydrator
+from cosmos.repository import AggregateRepository
 from cosmos.contrib.pg import (
     PostgresOutbox,
     PostgresEventStore,
     PostgresUnitOfWork,
     PostgresProcessedMessageRepository,
 )
-from dependency_injector import containers, providers
-import asyncpg
 from cosmos.unit_of_work import UnitOfWork
+from dependency_injector import containers, providers
 
 
 async def generate_postgres_pool(
@@ -90,17 +91,6 @@ class PostgresDomainContainer(containers.DeclarativeContainer):
         host=config.database_host,
         password=config.database_password,
         port=config.database_port,
-    )
-
-    event_hydrator = providers.Factory(
-        EventHydrator,
-        aggregate_root_mapping=config.aggregate_root_mapping,
-        event_hydration_mapping=config.event_hydration_mapping,
-    )
-
-    replay_handler = providers.Factory(
-        AggregateReplay,
-        event_hydrator=event_hydrator,
     )
 
     repository = providers.Factory(

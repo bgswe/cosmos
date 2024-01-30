@@ -5,26 +5,6 @@ from uuid import UUID
 from cosmos.domain import AggregateRoot, Event
 
 
-class ReplaysAggregate(Protocol):
-    """Interface for port into reconstituting an Aggregate given an event stream"""
-
-    def replay(self, event_stream: List[Event]) -> AggregateRoot:
-        """Replays the event stream and returns the resulting AggregateRoot"""
-
-        pass
-
-
-class HydratesEvent(Protocol):
-    """Interface for port into reconstituting an Event given an event record"""
-
-    def hydrate(
-        self, event_record: List[Dict]
-    ) -> Tuple[Type[AggregateRoot], List[Event]]:
-        """Deserializes an event list and return a list of Event objects, and the AggregateRoot Type"""
-
-        ...
-
-
 class AggregateRepository:
     """ABC which enables an aggregate persistence abstraction"""
 
@@ -108,58 +88,3 @@ class AggregateEventStoreRepository(AggregateRepository):
         super().__init__()
 
         self._replay_handler = replay_handler
-
-
-class EventHydrator:
-    def __init__(
-        self,
-        aggregate_root_mapping: Dict[str, Type[AggregateRoot]],
-        event_hydration_mapping: Dict[str, Type[Event]],
-    ):
-        self.aggregate_root_mapping = aggregate_root_mapping
-        self.event_hydration_mapping = event_hydration_mapping
-
-    def hydrate(self, event_records: Dict) -> Tuple[Type[AggregateRoot], List[Event]]:
-        """Basic implementation of hydrator
-
-        NOTE: The idea is that different implementations of the HydratesEvent
-        interface would require different logic to handle varied schemas.
-        This may not be there case, and it may not be trouble to
-        coalesce around an expected schema.
-        """
-
-        events = []
-        for event_record in event_records:
-            AggregateRootClass = self.aggregate_root_mapping[
-                event_record["stream_type"]
-            ]
-            EventClass = self.event_hydration_mapping[event_record["event_type"]]
-
-            events.append(
-                EventClass(
-                    message_id=event_record["id"],
-                    stream_id=event_record["stream_id"],
-                    **json.loads(event_record["data"]),
-                )
-            )
-
-        return AggregateRootClass, events
-
-
-class AggregateReplay:
-    def __init__(self, event_hydrator: HydratesEvent):
-        self.event_hydrator = event_hydrator
-
-    def replay(self, event_records: List[Dict]):
-        """..."""
-
-        AggregateRootClass, event_stream = self.event_hydrator.hydrate(
-            event_records=event_records,
-        )
-
-        aggregate_root = AggregateRootClass()
-
-        for event in event_stream:
-            aggregate_root.mutate(event=event)
-
-        return aggregate_root

@@ -1,6 +1,6 @@
+from typing import Type
 from uuid import UUID
 
-import asyncpg
 from cosmos.domain import AggregateRoot
 from cosmos.repository import AggregateEventStoreRepository
 from cosmos.utils import json_encode
@@ -38,7 +38,7 @@ class PostgresEventStore(AggregateEventStoreRepository):
                 json_encode(data=d),
             )
 
-    async def _get(self, id: UUID):
+    async def _get(self, id: UUID, aggregate_root_class: Type[AggregateRoot]):
         query = await self.connection.fetch(
             f"""
             SELECT
@@ -51,11 +51,5 @@ class PostgresEventStore(AggregateEventStoreRepository):
             id,
         )
 
-        records = [record for record in query]
-
-        # replay hydrated events to reconstruct current aggregate root state
-        aggregate_root = self._replay_handler.replay(event_records=records)
-
-        # TODO: could add timing logs to gauge how long the hydration/replay lasts
-
-        return aggregate_root
+        events = [record for record in query]
+        return aggregate_root_class.replay(events=events)
