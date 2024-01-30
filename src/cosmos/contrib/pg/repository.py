@@ -2,11 +2,11 @@ from typing import Type
 from uuid import UUID
 
 from cosmos.domain import AggregateRoot
-from cosmos.repository import AggregateEventStoreRepository
+from cosmos.repository import AggregateRepository
 from cosmos.utils import json_encode
 
 
-class PostgresEventStore(AggregateEventStoreRepository):
+class PostgresEventStore(AggregateRepository):
     """
     This is a general-use repository used to get or save event streams
     from/to a postgresql server.

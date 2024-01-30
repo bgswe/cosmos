@@ -76,15 +76,3 @@ class AggregateRepository:
         """Required for repository implementation to persist an AggregateRoot"""
 
         raise NotImplementedError
-
-
-class AggregateEventStoreRepository(AggregateRepository):
-    def __init__(
-        self,
-        replay_handler: ReplaysAggregate,  # TODO: revisit this param name
-    ):
-        """Initializes set to track what aggregates have been seen"""
-
-        super().__init__()
-
-        self._replay_handler = replay_handler
