@@ -25,13 +25,15 @@ class AggregateRepository:
 
         self._seen.append(aggregate)
 
-    async def get(self, id: UUID) -> AggregateRoot | None:
+    async def get(
+        self, id: UUID, aggregate_root_class: Type[AggregateRoot]
+    ) -> AggregateRoot | None:
         """Call subclass _get implementation and note the aggregate as seen
 
         :param: id -> the UUID of Aggregate to get
         """
 
-        agg = await self._get(id=id)
+        agg = await self._get(id=id, aggregate_root_class=aggregate_root_class)
 
         if agg:
             self._mark_seen(aggregate=agg)
