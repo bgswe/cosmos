@@ -48,7 +48,7 @@ class PostgresEventStore(AggregateRepository):
             WHERE
                 stream_id = $1
             """,
-            id,
+            str(id),
         )
 
         events = [record for record in query]
