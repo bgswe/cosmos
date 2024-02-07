@@ -9,33 +9,6 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 
-# class DomainObject(ABC):
-#     def __init__(self, **kwargs):
-#         """Sets the key value pairs as attributes"""
-
-#         self._initialized = False
-
-#         for k, v in kwargs.items():
-#             setattr(self, k, v)
-
-#         self._initialized = True
-
-
-# class ValueObject(DomainObject):
-#     def __eq__(self, other: Any) -> bool:
-#         if not other:  # other is falsey
-#             return False
-
-#         if self == other:  # same object in memory
-#             return True
-
-#         if not isinstance(other, ValueObject):  # other not value object
-#             return False
-
-#         # compare shallow equality for property dicts
-#         return self.to_dict() == other.to_dict()
-
-
 class Entity(ABC):
     def __init__(self):
         """..."""
@@ -52,7 +25,7 @@ class Entity(ABC):
         return {k: v for k, v in _vars.items() if not k.startswith("_")}
 
     def _initialize(self, **attrs):
-        """..."""
+        """To be called and when Entity is initially created"""
 
         uuid = attrs.pop("id", None)
 
@@ -64,7 +37,7 @@ class Entity(ABC):
         for attr, value in attrs.items():
             setattr(self, attr, value)
 
-        self.initialized = True
+        self._initialized = True
 
     def __repr__(self):
         """Use dictionary representation as the default"""
@@ -85,7 +58,7 @@ class Entity(ABC):
     def __setattr__(self, attr: str, value: Any) -> None:
         """Override setattr to capture when and how entity attributes change"""
 
-        if not attr.startswith("_") and self._initialized:
+        if self._initialized and not attr.startswith("_"):
             self._changed = True
             self._changed_attrs[attr] = value
 
