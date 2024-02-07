@@ -1,5 +1,4 @@
-import json
-from typing import Dict, List, Protocol, Tuple, Type
+from typing import List, Type
 from uuid import UUID
 
 from cosmos.domain import AggregateRoot, Event
