@@ -114,6 +114,8 @@ class AggregateRoot(Entity, ABC):
         for event in events:
             instance.mutate(event=event)
 
+        instance._reset_internals()
+
         return instance
 
     def mutate(self, event: Event):
