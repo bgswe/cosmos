@@ -58,7 +58,7 @@ class Entity(ABC):
     def __setattr__(self, attr: str, value: Any) -> None:
         """Override setattr to capture when and how entity attributes change"""
 
-        if self._initialized and not attr.startswith("_"):
+        if getattr(self, "_initialized", False) and not attr.startswith("_"):
             self._changed = True
             self._changed_attrs[attr] = value
 
