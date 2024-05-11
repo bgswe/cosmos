@@ -12,7 +12,7 @@ from cosmos.repository import AggregateRepository
 
 
 class TransactionalOutbox(Protocol):
-    async def send(self, messages: List[Message], **kwargs):
+    async def send(self, messages: list[Message], **kwargs):
         """Delievers a message to to transactional outbox"""
 
         pass
@@ -21,11 +21,9 @@ class TransactionalOutbox(Protocol):
 class ProcessedMessageRepository(Protocol):
     """..."""
 
-    def is_processed(self, message_id: UUID) -> bool:
-        ...
+    def is_processed(self, message_id: UUID) -> bool: ...
 
-    def mark_processed(self, message_id: UUID):
-        ...
+    def mark_processed(self, message_id: UUID): ...
 
 
 class UnitOfWork(ABC):
@@ -34,8 +32,12 @@ class UnitOfWork(ABC):
     This is an implementation of the unit of work pattern. Its core
     responsibility is providing a single context for a repository to
     share. If any repository action fails, all previous changes up to
-    that point shall be reverted.
+    that point shall be rolled-back.
     """
+
+    repository: AggregateRepository
+    outbox: TransactionalOutbox
+    processed_message_repository: ProcessedMessageRepository
 
     def __init__(
         self,

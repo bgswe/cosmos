@@ -64,13 +64,15 @@ class PostgresUnitOfWork(UnitOfWork):
             connection = await stack.enter_async_context(self.pool.acquire())
             await stack.enter_async_context(connection.transaction())
 
+            # TODO: Change these to be factories that accept connection on init
+
             # provide connection to outbox, and repository so that
             # they are ran under a single transaction
             self.outbox.connection = connection
             self.repository.connection = connection
             self.processed_messages.connection = connection
 
-            # transfer __aexit__ callback stack so it may called in this obj's __aexit__
+            # transfer __aexit__ callback stack so it may called in the uow's __aexit__
             self._stack = stack.pop_all()
 
         return self
