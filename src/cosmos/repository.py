@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import Type
 from uuid import UUID
 
 from cosmos.domain import AggregateRoot, Event
@@ -13,7 +13,7 @@ class AggregateRepository:
         self._seen = []
 
     @property
-    def seen(self) -> List[AggregateRoot]:
+    def seen(self) -> list[AggregateRoot]:
         return self._seen
 
     def reset(self):
@@ -39,7 +39,7 @@ class AggregateRepository:
 
         return agg
 
-    async def get_list(self, **kwargs) -> List[AggregateRoot]:
+    async def get_list(self, **kwargs) -> list[AggregateRoot]:
         """Call subclass _get_list implementation and note the aggregates as seen.
 
         :param: **kwargs -> any possible keyword arguments parameters used by
@@ -60,15 +60,16 @@ class AggregateRepository:
         """Call subclass _save implementation and note the aggregate as seen"""
 
         await self._save(aggregate)
-
         self._mark_seen(aggregate=aggregate)
 
-    async def _get(self, id: UUID) -> AggregateRoot | None:
+    async def _get(
+        self, id: UUID, aggregate_root_class: Type[AggregateRoot]
+    ) -> AggregateRoot | None:
         """Required for repository implementation to get an AggregateRoot"""
 
         raise NotImplementedError
 
-    async def _get_list(self, **kwargs) -> List[AggregateRoot]:
+    async def _get_list(self, **kwargs) -> list[AggregateRoot]:
         """Required for repository implementation to get a list of AggregateRoots"""
 
         raise NotImplementedError

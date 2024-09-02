@@ -6,11 +6,12 @@ from cosmos.domain import Message
 
 class PostgresOutbox:
     def __init__(self):
-        self.connection: asyncpg.Connection = None
+        self.connection: asyncpg.Connection | None = None
 
     async def send(self, messages: list[Message]):
         if self.connection is None:
-            raise "This outbox requires setting the connection object before sending"
+            # TODO: Raise custom exception
+            raise Exception("This outbox requires a connection object before delivery")
 
         # TODO: batch insert the list of messages
         for message in messages:

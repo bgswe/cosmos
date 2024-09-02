@@ -2,20 +2,26 @@ from contextlib import AsyncExitStack
 from typing import Dict
 from uuid import UUID
 
+from structlog import get_logger  # noqa
+
 import asyncpg
 from cosmos.unit_of_work import UnitOfWork
 
+logger = get_logger()
+
 
 class PostgresProcessedMessageRepository:
-    """
-    This is a general-use repository used to get or save event streams
-    from/to a postgresql server.
-    """
+    """Repository for messages, used to ensure idempotentcy"""
 
     def __init__(self):
-        self.connection = None
+        self.connection: asyncpg.Connection | None = None
 
     async def is_processed(self, message_id: UUID):
+        if self.connection is None:
+            raise Exception(
+                "This repository requires a connection object before delivery"
+            )
+
         query = await self.connection.fetchrow(
             f"""
             SELECT EXISTS (
@@ -30,9 +36,15 @@ class PostgresProcessedMessageRepository:
             str(message_id),
         )
 
+        assert query is not None
         return query["exists"]
 
     async def mark_processed(self, message_id: UUID):
+        if self.connection is None:
+            raise Exception(
+                "This repository requires a connection object before delivery"
+            )
+
         await self.connection.execute(
             f"""
             INSERT INTO
@@ -51,7 +63,6 @@ class PostgresUnitOfWork(UnitOfWork):
         **kwargs,
     ):
         self.pool = pool
-
         self._stack = None
 
         super().__init__(**kwargs)
@@ -65,7 +76,6 @@ class PostgresUnitOfWork(UnitOfWork):
             await stack.enter_async_context(connection.transaction())
 
             # TODO: Change these to be factories that accept connection on init
-
             # provide connection to outbox, and repository so that
             # they are ran under a single transaction
             self.outbox.connection = connection
@@ -92,4 +102,8 @@ class PostgresUnitOfWork(UnitOfWork):
         # reset state of repository after end of transaction
         self.repository.reset()
 
-        await self._stack.__aexit__(exc_type, exc, traceback)
+        if self._stack is None:
+            # TODO: flesh out this error state more
+            logger.error("stack is None")
+        else:
+            await self._stack.__aexit__(exc_type, exc, traceback)
