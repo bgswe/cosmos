@@ -1,4 +1,4 @@
-from cosmos.contrib.pg.repository import PostgresEventStore
+from cosmos.contrib.pg.repository import PostgresEventStore, PostgresEventStoreFactory
 from cosmos.contrib.pg.unit_of_work import (
     PostgresUnitOfWork,
     PostgresProcessedMessageRepository,

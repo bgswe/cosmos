@@ -3,6 +3,7 @@ from typing import Type
 from uuid import UUID
 
 from cosmos.domain import AggregateRoot
+from cosmos.factory import Factory
 from cosmos.repository import AggregateRepository
 
 
@@ -44,3 +45,8 @@ class PostgresEventStore(AggregateRepository):
 
         events = [pickle.loads(record["data"]) for record in query]
         return aggregate_root_class.replay(events=events)
+
+
+class PostgresEventStoreFactory(Factory):
+    def get(self) -> PostgresEventStore:
+        return PostgresEventStore()

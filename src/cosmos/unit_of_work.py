@@ -1,13 +1,11 @@
 from __future__ import annotations
 from abc import ABC
 
-from typing import (
-    List,
-    Protocol,
-)
+from typing import Protocol, Type
 from uuid import UUID
 
 from cosmos.domain import Message
+from cosmos.factory import Factory
 from cosmos.repository import AggregateRepository
 
 
@@ -21,9 +19,9 @@ class TransactionalOutbox(Protocol):
 class ProcessedMessageRepository(Protocol):
     """..."""
 
-    def is_processed(self, message_id: UUID) -> bool: ...
+    async def is_processed(self, message_id: UUID) -> bool: ...
 
-    def mark_processed(self, message_id: UUID): ...
+    async def mark_processed(self, message_id: UUID): ...
 
 
 class UnitOfWork(ABC):
@@ -54,3 +52,21 @@ class UnitOfWork(ABC):
 
     async def __aexit__(self, *args):
         raise NotImplementedError
+
+
+class UnitOfWorkFactory(Factory):
+    def __init__(
+        self: "UnitOfWorkFactory",
+        unit_of_work_cls: Type[UnitOfWork],
+        **uow_kwargs,
+    ):
+        self._uow_cls = unit_of_work_cls
+        self._uow_kwargs = uow_kwargs
+
+    def get(self: "UnitOfWorkFactory") -> UnitOfWork:
+        kwargs = {
+            k: v.get() if isinstance(v, Factory) else v
+            for k, v in self._uow_kwargs.items()
+        }
+
+        return self._uow_cls(**kwargs)
