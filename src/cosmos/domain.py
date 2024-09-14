@@ -122,8 +122,8 @@ class AggregateRoot(Entity, ABC):
         return self._events
 
     @property
-    def name(self) -> str:
-        """..."""
+    def type_name(self) -> str:
+        """Provide a reasonable str representation of the Aggregate type"""
 
         return type(self).__name__
 
@@ -136,8 +136,8 @@ class Message(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
     @property
-    def name(self) -> str:
-        """..."""
+    def type_name(self) -> str:
+        """Provide a reasonable str representation of the Message type"""
 
         return type(self).__name__
 
