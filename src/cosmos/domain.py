@@ -27,13 +27,6 @@ class Entity(ABC):
     def _initialize(self, **attrs):
         """To be called and when Entity is initially created"""
 
-        uuid = attrs.pop("id", None)
-
-        if uuid is None:
-            uuid = uuid4()
-
-        attrs["id"] = uuid
-
         for attr, value in attrs.items():
             setattr(self, attr, value)
 
