@@ -10,19 +10,19 @@ class AggregateRepository:
     def __init__(self):
         """Initializes set to track what aggregates have been seen"""
 
-        self._seen = []
+        self._seen = set()
 
     @property
-    def seen(self) -> list[AggregateRoot]:
+    def seen(self) -> set[AggregateRoot]:
         return self._seen
 
     def reset(self):
-        self._seen = []
+        self._seen = set()
 
     def _mark_seen(self, aggregate: AggregateRoot):
         """Utility to add a given aggregate to the set of seen aggregates"""
 
-        self._seen.append(aggregate)
+        self._seen.add(aggregate)
 
     async def get(
         self, id: UUID, aggregate_root_class: Type[AggregateRoot]
