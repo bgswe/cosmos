@@ -7,10 +7,11 @@ from cosmos.domain import AggregateRoot, Event
 class AggregateRepository:
     """ABC which enables an aggregate persistence abstraction"""
 
-    def __init__(self):
+    def __init__(self, singleton_config: dict):
         """Initializes set to track what aggregates have been seen"""
 
         self._seen = {}
+        self._singleton_config = singleton_config
 
     @property
     def seen(self) -> list[AggregateRoot]:
@@ -34,27 +35,31 @@ class AggregateRepository:
 
         agg = await self._get(id=id, aggregate_root_class=aggregate_root_class)
 
-        if agg:
+        if agg is not None:
             self._mark_seen(aggregate=agg)
 
         return agg
 
-    async def get_list(self, **kwargs) -> list[AggregateRoot]:
-        """Call subclass _get_list implementation and note the aggregates as seen.
+    async def get_singleton(
+        self,
+        aggregate_root_class: Type[AggregateRoot],
+    ) -> AggregateRoot | None:
+        """Requests a singleton class, and if it's not present, instantiates it"""
 
-        :param: **kwargs -> any possible keyword arguments parameters used by
-                _get_list implementation
-        """
+        current_singleton_id = self._singleton_config.get("id")
 
-        agg_list = await self._get_list(**kwargs)
+        agg = await self._get(
+            id=current_singleton_id, aggregate_root_class=aggregate_root_class
+        )
 
-        # EVAL: Possible performance implication of checking self._seen
-        # for large lists here? Likely unnecessary micro optimization at this time
-        if agg_list:
-            for agg in agg_list:
-                self._mark_seen(aggregate=agg)
+        if agg is None:
+            agg = aggregate_root_class()
+            agg.create(current_singleton_id)
+            await self.save(aggregate=agg)
 
-        return agg_list
+        self._mark_seen(aggregate=agg)
+
+        return agg
 
     async def save(self, aggregate: AggregateRoot):
         """Call subclass _save implementation and note the aggregate as seen"""
