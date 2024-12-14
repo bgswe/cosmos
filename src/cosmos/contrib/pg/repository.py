@@ -59,5 +59,8 @@ class PostgresEventStore(AggregateRepository):
 
 
 class PostgresEventStoreFactory(Factory):
+    def __init__(self, event_store_kwargs: dict, *args, **kwargs):
+        self._event_store_kwargs = event_store_kwargs
+
     def get(self) -> PostgresEventStore:
-        return PostgresEventStore()
+        return PostgresEventStore(**self._event_store_kwargs)
