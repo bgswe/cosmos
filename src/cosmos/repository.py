@@ -52,10 +52,8 @@ class AggregateRepository:
             id=current_singleton_id, aggregate_root_class=aggregate_root_class
         )
 
-        if agg is None:
-            agg = aggregate_root_class()
+        if not hasattr(agg, "id"):
             agg.create(current_singleton_id)
-            await self.save(aggregate=agg)
 
         self._mark_seen(aggregate=agg)
 
