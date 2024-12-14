@@ -34,7 +34,7 @@ class PostgresEventStore(AggregateRepository):
                     ($1, $2, $3);
                 """,
                 str(event.message_id),
-                str(aggregate_root.stream_id),
+                str(event.stream_id),
                 pickled_event,
             )
 
