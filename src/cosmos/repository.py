@@ -23,7 +23,7 @@ class AggregateRepository:
     def _mark_seen(self, aggregate: AggregateRoot):
         """Utility to add a given aggregate to the set of seen aggregates"""
 
-        self._seen[aggregate.stream_id] = aggregate
+        self._seen[aggregate.id] = aggregate
 
     async def get(
         self, id: UUID, aggregate_root_class: Type[AggregateRoot]
