@@ -10,10 +10,10 @@ from cosmos.repository import AggregateRepository
 class PostgresEventStore(AggregateRepository):
     """Create/Read aggregates from an event store implmentation in PostgreSQL"""
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         # TODO: mark asyncpg as peerDep? Is that the correct term?
         self.connection: asyncpg.Connection | None = None
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
     async def _save(self, aggregate_root: AggregateRoot):
         if self.connection is None:
