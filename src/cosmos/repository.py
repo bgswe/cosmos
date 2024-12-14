@@ -46,7 +46,7 @@ class AggregateRepository:
     ) -> AggregateRoot | None:
         """Requests a singleton class, and if it's not present, instantiates it"""
 
-        current_singleton_id = self._singleton_config.get("id")
+        current_singleton_id = self._singleton_config.get(aggregate_root_class.__name__)
 
         agg = await self._get(
             id=current_singleton_id, aggregate_root_class=aggregate_root_class
