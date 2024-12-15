@@ -2,9 +2,14 @@ import pickle
 from typing import Type
 from uuid import UUID
 
+import structlog
+
 from cosmos.domain import AggregateRoot
 from cosmos.factory import Factory
 from cosmos.repository import AggregateRepository
+
+
+logger = structlog.get_logger()
 
 
 class PostgresEventStore(AggregateRepository):
@@ -55,6 +60,10 @@ class PostgresEventStore(AggregateRepository):
         )
 
         events = [pickle.loads(record["data"]) for record in query]
+
+        log = logger.bind(events=events)
+        log.info("events for get")
+
         return aggregate_root_class.replay(events=events)
 
 
