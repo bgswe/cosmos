@@ -45,6 +45,7 @@ class PostgresEventStore(AggregateRepository):
 
     async def _get(self, id: UUID, aggregate_root_class: Type[AggregateRoot]):
         if self.connection is None:
+            # TODO: custom exception
             raise Exception("This repository requires a connection object before save")
 
         query = await self.connection.fetch(
@@ -61,8 +62,9 @@ class PostgresEventStore(AggregateRepository):
 
         events = [pickle.loads(record["data"]) for record in query]
 
-        log = logger.bind(events=events)
-        log.info("events for get")
+        if not events:
+            # TODO: custom exception
+            raise Exception(f"Aggregate not found for stream id: {id}")
 
         return aggregate_root_class.replay(events=events)
 
