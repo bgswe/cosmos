@@ -136,6 +136,14 @@ class Message(BaseModel):
         return type(self).__name__
 
 
+class UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            # if the obj is uuid, we simply return the value of uuid
+            return obj.hex
+        return json.JSONEncoder.default(self, obj)
+
+
 class Event(Message):
     """Base Event of our domain model"""
 
@@ -147,7 +155,8 @@ class Event(Message):
                     "created": dt.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
                 },
                 "data": self.model_dump(),
-            }
+            },
+            cls=UUIDEncoder,
         )
 
 
