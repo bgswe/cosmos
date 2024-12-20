@@ -1,4 +1,4 @@
-import pickle
+from datetime import datetime as dt, timezone
 from typing import Type
 from uuid import UUID
 
@@ -29,7 +29,6 @@ class PostgresEventStore(AggregateRepository):
         # TODO: Do we have version checks? Needed for preventing event race-conditions
         for event in aggregate_root.events:
             current_version += 1
-            pickled_event = pickle.dumps(event)
 
             await self.connection.execute(
                 f"""
@@ -40,7 +39,7 @@ class PostgresEventStore(AggregateRepository):
                 """,
                 str(event.message_id),
                 str(event.stream_id),
-                pickled_event,
+                event.serialize(),
             )
 
     async def _get(self, id: UUID, aggregate_root_class: Type[AggregateRoot]):
@@ -60,13 +59,17 @@ class PostgresEventStore(AggregateRepository):
             str(id),
         )
 
-        events = [pickle.loads(record["data"]) for record in query]
+        # events = [pickle.loads(record["data"]) for record in query]
+        for record in query:
+            d = record["data"]
+            logger.info("EVENT JSON", json=d)
 
-        if not events:
-            # TODO: custom exception
-            raise Exception(f"Aggregate not found for stream id: {id}")
+        # if not events:
+        #     # TODO: custom exception
+        #     raise Exception(f"Aggregate not found for stream id: {id}")
 
-        return aggregate_root_class.replay(events=events)
+        # return aggregate_root_class.replay(events=[events])
+        return aggregate_root_class.replay(events=[])
 
 
 class PostgresEventStoreFactory(Factory):

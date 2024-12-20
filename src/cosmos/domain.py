@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone
 from enum import StrEnum, auto
 from typing import Any, Dict, List
 from uuid import UUID, uuid4
@@ -138,7 +138,14 @@ class Message(BaseModel):
 class Event(Message):
     """Base Event of our domain model"""
 
-    ...
+    def serialize(self):
+        return {
+            "meta": {
+                "type": self.type_name,
+                "created": dt.now(timezone.utc),
+            },
+            "data": self.model_dump(),
+        }
 
 
 class DomainEvent(Event):
