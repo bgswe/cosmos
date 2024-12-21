@@ -62,9 +62,9 @@ class PostgresEventStore(AggregateRepository):
 
         events = []
         for record in query:
-            d = json.loads(record["data"])
-            event_cls = DomainEvent.get_event_class(type=d["meta"]["type"])
-            events.append(event_cls.model_validate(d))
+            event_json = json.loads(record["data"])
+            event_cls = DomainEvent.get_event_class(type=event_json["meta"]["type"])
+            events.append(event_cls.model_validate(event_json["data"]))
 
         if not events:
             # TODO: custom exception
