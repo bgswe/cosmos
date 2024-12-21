@@ -62,7 +62,8 @@ class PostgresEventStore(AggregateRepository):
         # events = [pickle.loads(record["data"]) for record in query]
         for record in query:
             d = record["data"]
-            logger.info("EVENT JSON", json=d)
+            log = logger.bind(type=type(d), d=d)
+            log.info("data")
 
         # if not events:
         #     # TODO: custom exception

@@ -165,6 +165,11 @@ class DomainEvent(Event):
 
     stream_id: UUID
 
+    @classmethod
+    def get_event_class(cls, type) -> DomainEvent | None:
+        class_map = {sc.__name__: sc for sc in cls.__subclasses__()}
+        return class_map.get(type)
+
 
 class SystemEvent(Event):
     """Event arising in abstraction levels above the Domain
