@@ -1,10 +1,11 @@
 from datetime import datetime as dt, timezone
+import json
 from typing import Type
 from uuid import UUID
 
 import structlog
 
-from cosmos.domain import AggregateRoot
+from cosmos.domain import AggregateRoot, DomainEvent
 from cosmos.factory import Factory
 from cosmos.repository import AggregateRepository
 
@@ -59,18 +60,17 @@ class PostgresEventStore(AggregateRepository):
             str(id),
         )
 
-        # events = [pickle.loads(record["data"]) for record in query]
+        events = []
         for record in query:
-            d = record["data"]
-            log = logger.bind(type=type(d), d=d)
-            log.info("data")
+            d = json.loads(record["data"])
+            event_cls = DomainEvent.get_event_class(type=d["type"])
+            events.append(event_cls.model_validate(d))
 
-        # if not events:
-        #     # TODO: custom exception
-        #     raise Exception(f"Aggregate not found for stream id: {id}")
+        if not events:
+            # TODO: custom exception
+            raise Exception(f"Aggregate not found for stream id: {id}")
 
-        # return aggregate_root_class.replay(events=[events])
-        return aggregate_root_class.replay(events=[])
+        return aggregate_root_class.replay(events=[events])
 
 
 class PostgresEventStoreFactory(Factory):
