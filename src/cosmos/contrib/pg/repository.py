@@ -63,7 +63,7 @@ class PostgresEventStore(AggregateRepository):
         events = []
         for record in query:
             d = json.loads(record["data"])
-            event_cls = DomainEvent.get_event_class(type=d["type"])
+            event_cls = DomainEvent.get_event_class(type=d["meta"]["type"])
             events.append(event_cls.model_validate(d))
 
         if not events:
