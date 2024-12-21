@@ -70,7 +70,7 @@ class PostgresEventStore(AggregateRepository):
             # TODO: custom exception
             raise Exception(f"Aggregate not found for stream id: {id}")
 
-        return aggregate_root_class.replay(events=[events])
+        return aggregate_root_class.replay(events=events)
 
 
 class PostgresEventStoreFactory(Factory):
