@@ -52,11 +52,13 @@ class AggregateRepository:
             id=current_singleton_id, aggregate_root_class=aggregate_root_class
         )
 
-        if not hasattr(agg, "id"):
+        if agg is None:
+            # the way this is implemented will require singletons to only
+            # require id on create
+            agg = aggregate_root_class()
             agg.create(current_singleton_id)
 
         self._mark_seen(aggregate=agg)
-
         return agg
 
     async def save(self, aggregate: AggregateRoot):

@@ -43,7 +43,9 @@ class PostgresEventStore(AggregateRepository):
                 event.serialize(),
             )
 
-    async def _get(self, id: UUID, aggregate_root_class: Type[AggregateRoot]):
+    async def _get(
+        self, id: UUID, aggregate_root_class: Type[AggregateRoot]
+    ) -> Type[AggregateRoot] | None:
         if self.connection is None:
             # TODO: custom exception
             raise Exception("This repository requires a connection object before save")
@@ -67,8 +69,7 @@ class PostgresEventStore(AggregateRepository):
             events.append(event_cls.model_validate(event_json["data"]))
 
         if not events:
-            # TODO: custom exception
-            raise Exception(f"Aggregate not found for stream id: {id}")
+            return
 
         return aggregate_root_class.replay(events=events)
 
