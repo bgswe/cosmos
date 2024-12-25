@@ -30,17 +30,19 @@ class PostgresEventStore(AggregateRepository):
         # TODO: Do we have version checks? Needed for preventing event race-conditions
         for event in aggregate_root.events:
             current_version += 1
+            event_data = event.serialize()
 
             await self.connection.execute(
                 f"""
                 INSERT INTO
-                    events(id, stream_id, data) 
+                    events(id, stream_id, created, data) 
                 VALUES
-                    ($1, $2, $3);
+                    ($1, $2, $3, $4);
                 """,
                 str(event.message_id),
                 str(event.stream_id),
-                event.serialize(),
+                event_data["created"],
+                event_data,
             )
 
     async def _get(
