@@ -126,8 +126,11 @@ class Message(BaseModel):
     """Base Message model/schema"""
 
     message_id: UUID = Field(default_factory=uuid4)
-
     model_config = ConfigDict(use_enum_values=True)
+
+    def __init__(self, *args, **kwargs):
+        self.created = dt.now(timezone.utc)
+        super().__init__(*args, **kwargs)
 
     @property
     def type_name(self) -> str:
@@ -152,7 +155,7 @@ class Event(Message):
             {
                 "meta": {
                     "type": self.type_name,
-                    "created": dt.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    "created": self.created.strftime("%Y-%m-%d %H:%M:%S"),
                 },
                 "data": self.model_dump(),
             },

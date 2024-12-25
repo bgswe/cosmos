@@ -37,11 +37,11 @@ class PostgresEventStore(AggregateRepository):
                 INSERT INTO
                     events(id, stream_id, created, data) 
                 VALUES
-                    ($1, $2, $3, $4);
+                    ($1, $2, $3,);
                 """,
                 str(event.message_id),
                 str(event.stream_id),
-                event_data["created"],
+                event.created,
                 event_data,
             )
 
