@@ -154,7 +154,7 @@ class Event(Message):
                     "type": self.type_name,
                     "created": self.created.strftime("%Y-%m-%d %H:%M:%S"),
                 },
-                "data": self.model_dump(),
+                "data": self.model_dump(exclude={'created'}),
             },
             cls=UUIDEncoder,
         )
