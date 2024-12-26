@@ -127,7 +127,7 @@ class Message(BaseModel):
 
     message_id: UUID = Field(default_factory=uuid4)
     model_config = ConfigDict(use_enum_values=True)
-    created: dt = Field(default_factory=lambda: dt.now(timezone.utc))
+    created: dt = Field(default_factory=lambda: dt.now(timezone.utc).replace(tzinfo=None))
 
     @property
     def type_name(self) -> str:
