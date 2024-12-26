@@ -127,10 +127,7 @@ class Message(BaseModel):
 
     message_id: UUID = Field(default_factory=uuid4)
     model_config = ConfigDict(use_enum_values=True)
-
-    def __init__(self, *args, **kwargs):
-        self.created = dt.now(timezone.utc)
-        super().__init__(*args, **kwargs)
+    created: dt = Field(default_factory=lambda: dt.now(timezone.utc))
 
     @property
     def type_name(self) -> str:
