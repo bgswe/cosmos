@@ -35,13 +35,14 @@ class PostgresEventStore(AggregateRepository):
             await self.connection.execute(
                 f"""
                 INSERT INTO
-                    events(id, stream_id, created, data) 
+                    events(created, id, stream_id, type, data)
                 VALUES
-                    ($1, $2, $3, $4);
+                    ($1, $2, $3, $4, $5);
                 """,
+                event.created,
                 str(event.message_id),
                 str(event.stream_id),
-                event.created,
+                event.type_name,
                 event_data,
             )
 
